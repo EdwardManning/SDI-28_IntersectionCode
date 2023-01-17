@@ -1,0 +1,2 @@
+SWERR Occurances:
+SWERR at C:\SDI-28_IntersectionCode\source.cpp:14 - (45)
