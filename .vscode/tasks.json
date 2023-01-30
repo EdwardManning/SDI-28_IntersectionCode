@@ -10,6 +10,7 @@
                 "${workspaceFolder}/*.cpp",
                 "${workspaceFolder}/Infrastructure/*.cpp",
                 "${workspaceFolder}/Common/*.cpp",
+                "${workspaceFolder}/Vehicles/*.cpp",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],
