@@ -10,12 +10,12 @@ Lane::Lane()
 //the following constructor should never be used
 Lane::Lane(uint8 number_, direction direction_, path path_)
 {
-    SWERRINT(number_<<4 + direction_<<2 + path_);
+    SWERRINT(number_<<5 + direction_<<3 + path_);
 }
 
 //The following functions are used to access the values of the 
 //protected members. They all return the variable of the same name
-// and do nothing else.
+//and do nothing else.
 float* Lane::startingPosition()
 {
     return my_startingPosition;
@@ -69,4 +69,9 @@ bool Lane::laneType()
 uint8 Lane::speedLimit()
 {
     return my_speedLimit;
+}
+
+int8* Lane::unitVector()
+{
+    return my_unitVector;
 }

@@ -4,11 +4,29 @@
 #include <string>
 #include "./CommonTypes.h"
 #include "./IntersectionParameters.h"
+#include "./SimulationParameters.h"
 
 //for software error (SWERR) reporting purposes
 #define SWERRINT(x) fprintf(stderr, "SWERR at %s:%d - (%d)\n", __FILE__, __LINE__, x)
 #define SWERRSTR(x) fprintf(stderr, "SWERR at %s:%d - (%s)\n", __FILE__, __LINE__, x)
 
+//for vehicle states
+//each state pertains to one bit in a byte
+enum state
+{
+    DRIVING = 1,
+    ACCELERATING = 2,
+    DECELERATING = 4,
+    CHANGING_LANES = 8,
+    TURNING = 16,
+    CORRECT_LANE = 32,
+    IN_INTERSECTION = 64,
+    THROUGH_INTERSECTION = 128,
+};
+
+//for state changes
+const bool REMOVE = 0;
+const bool ADD = 1;
 
 //for coordinates
 const bool x = 0;
@@ -67,7 +85,60 @@ const std::string PATH_STR[]
     "all path",
 };
 
-//constant variable holding all of the necessary intersection parameters
+//types of vehicles
+enum VehicleType
+{
+    CAR,              //0
+    SELF_DRIVING_CAR, //1
+};
+
+const std::string VEHICLE_TYPE_STR[]
+{
+    "car",
+    "self-driving car",
+};
+
+//types of drivers 
+enum DriverType
+{
+    NULL_DRIVER,   //0
+    SLOW,          //1
+    NORMAL,        //2
+    AGGRESSIVE,    //3
+};
+
+const std::string DRIVER_TYPE_STR[]
+{
+    "no driver",
+    "slow",
+    "normal",
+    "aggressive",
+};
+
+//normal and null_drivers have no modifier
+//aggressive drivers drive faster and slow drivers slower
+const float DRIVER_TYPE_MODIFIER[]
+{
+    1,
+    0.95,
+    1,
+    1.05,
+};
+
+//direction vectors to set lane velocity modifiers
+//will be used by vehicles to initialize velocity
+//Note: direction in title relates to direction travelling not direction coming from
+//for instance NORTH_VECTOR will be used to by south entry lanes as its' vector
+const struct directionVectors
+{
+    const int8 NORTH_VECTOR[2] = { 0, -1 }; //travelling north
+    const int8 SOUTH_VECTOR[2] = { 0, 1 }; //travelling south
+    const int8 EAST_VECTOR[2] = { 1, 0 }; //travelling east
+    const int8 WEST_VECTOR[2] = { -1, 0 }; //travelling west
+}DIRECTION_VECTOR;
+
+//constant variable holding all of the necessary parameters
 const IntersectionParameters intersection_params;
+const SimulationParameters simulation_params;
 
 #endif

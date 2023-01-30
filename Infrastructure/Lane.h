@@ -3,7 +3,7 @@
 #include <cstdlib>
 
 /*
-*   Name: Road
+*   Name: Lane
 *
 *   Description: Defines all of the shared functions and variables for the lanes.
 *
@@ -27,6 +27,7 @@ public:
     path lanePath();
     bool laneType();
     uint8 speedLimit();
+    int8* unitVector();
 protected:
     //it is worth noting that entry and exit lanes begin and end at opposite
     //ends of the road
@@ -44,5 +45,6 @@ protected:
     path my_lanePath; //the path of the lane
     bool my_laneType; //the type of the lane
     uint8 my_speedLimit; //the speed limit of the lane
+    int8 my_unitVector[2]; //the unit vector of the lane, initializes direction of travel
 private:
 };

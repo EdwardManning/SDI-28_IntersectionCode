@@ -7,7 +7,9 @@
 *
 *   Description: Assigns values to protected variables.
 *
-*   Input: N/A
+*   Input: number_ -> The lane number.
+*          direction_ -> The direction the road comes from.
+*          path_ -> The path the lane leads to.
 *
 *   Output: N/A
 *
@@ -51,6 +53,11 @@ ExitLane::ExitLane(uint8 number_, direction direction_, path path_)
 
             my_startingPosition[y] = intersection_params.lane_length;
             my_endingPosition[y] = 0;
+            
+            //unit vectors pertain to the direction you are HEADING NOT COMING FROM
+            //if we are exiting the intersection to the north then our direction is north
+            my_unitVector[x] = DIRECTION_VECTOR.NORTH_VECTOR[x];
+            my_unitVector[y] = DIRECTION_VECTOR.NORTH_VECTOR[y];
         }
             break;
         case(SOUTH):
@@ -71,6 +78,9 @@ ExitLane::ExitLane(uint8 number_, direction direction_, path path_)
 
             my_startingPosition[y] = intersection_params.frame_length - intersection_params.lane_length;
             my_endingPosition[y] = intersection_params.frame_length;
+
+            my_unitVector[x] = DIRECTION_VECTOR.SOUTH_VECTOR[x];
+            my_unitVector[y] = DIRECTION_VECTOR.SOUTH_VECTOR[y];
         }
             break;
         case(EAST):
@@ -94,6 +104,9 @@ ExitLane::ExitLane(uint8 number_, direction direction_, path path_)
 
             my_startingPosition[x] = intersection_params.frame_width - intersection_params.lane_length;
             my_endingPosition[x] = intersection_params.frame_width;
+
+            my_unitVector[x] = DIRECTION_VECTOR.EAST_VECTOR[x];
+            my_unitVector[y] = DIRECTION_VECTOR.EAST_VECTOR[y];
         }
             break;
         case(WEST):
@@ -115,6 +128,9 @@ ExitLane::ExitLane(uint8 number_, direction direction_, path path_)
 
             my_startingPosition[x] = intersection_params.lane_length;
             my_startingPosition[x] = 0;
+
+            my_unitVector[x] = DIRECTION_VECTOR.WEST_VECTOR[x];
+            my_unitVector[y] = DIRECTION_VECTOR.WEST_VECTOR[y];
         }
             break;
         default: SWERRINT(my_laneDirection); //this should never be hit
