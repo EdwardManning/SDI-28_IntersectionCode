@@ -22,6 +22,7 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
     my_driverType = driver_type_;
     my_name = std::to_string(my_number) + " " + VEHICLE_TYPE_STR[my_vehicleType] + " " + DRIVER_TYPE_STR[my_driverType];
     my_maxSpeed = lane_->speedLimit() * DRIVER_TYPE_MODIFIER[my_driverType];
+    my_timeInIntersection = 0;
 
     my_currentPosition[x] = lane_->startingPosition()[x];
     my_currentPosition[y] = lane_->startingPosition()[y];
@@ -37,41 +38,6 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
 
     my_direction = lane_->laneDirection();
     my_laneNumber = lane_->number();
-
-    switch(my_path)
-    {
-        case(LEFT):
-        {
-            if(lane_->lanePath() == LEFT ||
-               lane_->lanePath() == STRAIGHT_LEFT ||
-               lane_->lanePath() == ALL_PATHS)
-            {
-                changeState(CORRECT_LANE, ADD);
-            }
-
-        }
-            break;
-        case(STRAIGHT):
-        {
-            if(lane_->lanePath() == STRAIGHT ||
-               lane_->lanePath() == STRAIGHT_LEFT ||
-               lane_->lanePath() == STRAIGHT_RIGHT ||
-               lane_->lanePath() == ALL_PATHS)
-            {
-                changeState(CORRECT_LANE, ADD);
-            }
-        }
-            break;
-        case(RIGHT):
-        {
-            if(lane_->lanePath() == RIGHT ||
-               lane_->lanePath() == STRAIGHT_RIGHT ||
-               lane_->lanePath() == ALL_PATHS)
-            {
-                changeState(CORRECT_LANE, ADD);
-            }
-        }
-            break;
-        default: SWERRINT(my_path);
-    }
+    
+    correctLane(lane_);
 }

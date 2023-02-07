@@ -2,13 +2,17 @@
 #ifndef COMMON_DEFS
 #define COMMON_DEFS
 #include <string>
+#include <cmath>
 #include "./CommonTypes.h"
 #include "./IntersectionParameters.h"
 #include "./SimulationParameters.h"
 
 //for software error (SWERR) reporting purposes
 #define SWERRINT(x) fprintf(stderr, "SWERR at %s:%d - (%d)\n", __FILE__, __LINE__, x)
+#define SWERRFLOAT(x) fprintf(stderr, "SWERR at %s:%d - (%f)\n", __FILE__, __LINE__, x)
 #define SWERRSTR(x) fprintf(stderr, "SWERR at %s:%d - (%s)\n", __FILE__, __LINE__, x)
+
+#define PI  3.1415926535
 
 //for vehicle states
 //each state pertains to one bit in a byte
@@ -141,4 +145,8 @@ const struct directionVectors
 const IntersectionParameters intersection_params;
 const SimulationParameters simulation_params;
 
+constexpr float MAGNITUDE(float x_value, float y_value)
+{
+    return sqrt( ( pow(x_value, 2) ) + ( pow(y_value, 2) ) );
+}
 #endif

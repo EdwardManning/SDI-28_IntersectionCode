@@ -20,10 +20,13 @@ EastRoad::EastRoad()
     }
 
     //assign values to protected variables
+    my_direction = EAST;
     my_totalLanes = intersection_params.ew_number_of_entries + intersection_params.ew_number_of_exits;
     my_laneList = new Lane*[my_totalLanes];
     my_name = DIRECTION_STR[EAST] + " " + ROAD_STR;
     my_speedLimit = intersection_params.ew_speed_limit;
+    my_startingPosition = intersection_params.intersection_width;
+    my_endingPosition = my_startingPosition - intersection_params.lane_length;
 
     //populate laneList with lanes
     for (uint8 i = 0; i < my_totalLanes; i++)
@@ -67,4 +70,29 @@ EastRoad::EastRoad()
             }
         }
     }
+}
+
+/*
+*   Name: correspondingExit
+*
+*   Description: Determines the exit direction given the path.
+*
+*   Input: path_ -> The path the vehicle is taking.
+*
+*   Output: The direction of the exit.
+*
+*/
+direction EastRoad::correspondingExit(path path_)
+{
+    switch(path_)
+    {
+        case(LEFT): return SOUTH;
+            break;
+        case(RIGHT): return NORTH;
+            break;
+        case(STRAIGHT): return WEST;
+            break;
+        default: SWERRINT(path_);
+    }
+    return NORTH;
 }

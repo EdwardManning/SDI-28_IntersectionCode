@@ -21,9 +21,13 @@ public:
     //important functions
     void drive();
     void accelerate();
+    void changeLane(path direction_);
+    void stopLaneChange();
+    bool correctLane(Lane* lane_);
 
     //less important functions
     void changeState(state state_, const bool adding_);
+    void setLane(uint8 lane_number_);
     float* currentPosition();
     float* currentVelocity();
     float* currentAcceleration();
@@ -36,6 +40,7 @@ public:
     direction vehicleDirection();
     uint8 laneNumber();
     uint8 maxSpeed();
+    float timeInIntersection();
 protected:
     float my_currentPosition[2]; //the current position of the vehicle
     float my_currentVelocity[2]; //the current velocity of the vehicle
@@ -49,5 +54,6 @@ protected:
     direction my_direction; //the direction the vehicle started from
     uint8 my_laneNumber; //the number of the lane the vehicle is currently in
     uint8 my_maxSpeed; //the maximum speed of the vehicle
+    float my_timeInIntersection; //the amount of time spent in the intersection
 private:
 };

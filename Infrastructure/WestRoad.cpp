@@ -20,10 +20,13 @@ WestRoad::WestRoad()
     }
 
     //assign values to protected variables
+    my_direction = WEST;
     my_totalLanes = intersection_params.ew_number_of_entries + intersection_params.ew_number_of_exits;
     my_laneList = new Lane*[my_totalLanes];
     my_name = DIRECTION_STR[WEST] + " " + ROAD_STR;
     my_speedLimit = intersection_params.ew_speed_limit;
+    my_startingPosition = 0;
+    my_endingPosition = intersection_params.lane_length;
 
     //populate laneList with lanes
     for (uint8 i = 0; i < my_totalLanes; i++)
@@ -67,4 +70,29 @@ WestRoad::WestRoad()
             }
         }
     }
+}
+
+/*
+*   Name: correspondingExit
+*
+*   Description: Determines the exit direction given the path.
+*
+*   Input: path_ -> The path the vehicle is taking.
+*
+*   Output: The direction of the exit.
+*
+*/
+direction WestRoad::correspondingExit(path path_)
+{
+    switch(path_)
+    {
+        case(LEFT): return NORTH;
+            break;
+        case(RIGHT): return SOUTH;
+            break;
+        case(STRAIGHT): return EAST;
+            break;
+        default: SWERRINT(path_);
+    }
+    return NORTH;
 }

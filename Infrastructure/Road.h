@@ -24,6 +24,7 @@ public:
     std::string name();
     direction roadDirection();
     uint8 speedLimit();
+    virtual direction correspondingExit(path path_);
 protected:
     Lane** my_laneList; //list of all the lanes in the road
     uint16 my_startingPosition; //where the road begins (which side of the frame)

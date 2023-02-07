@@ -20,10 +20,13 @@ NorthRoad::NorthRoad()
     }
     
     //assign values to protected variables
+    my_direction = NORTH;
     my_totalLanes = intersection_params.ns_number_of_entries + intersection_params.ns_number_of_exits;
     my_laneList = new Lane*[my_totalLanes];
     my_name = DIRECTION_STR[NORTH] + " " + ROAD_STR;
     my_speedLimit = intersection_params.ns_speed_limit;
+    my_startingPosition = 0;
+    my_endingPosition = intersection_params.lane_length;
 
     //populate laneList with lanes
     for (uint8 i = 0; i < my_totalLanes; i++)
@@ -67,4 +70,29 @@ NorthRoad::NorthRoad()
             }
         }
     }
+}
+
+/*
+*   Name: correspondingExit
+*
+*   Description: Determines the exit direction given the path.
+*
+*   Input: path_ -> The path the vehicle is taking.
+*
+*   Output: The direction of the exit.
+*
+*/
+direction NorthRoad::correspondingExit(path path_)
+{
+    switch(path_)
+    {
+        case(LEFT): return EAST;
+            break;
+        case(RIGHT): return WEST;
+            break;
+        case(STRAIGHT): return SOUTH;
+            break;
+        default: SWERRINT(path_);
+    }
+    return NORTH;
 }
