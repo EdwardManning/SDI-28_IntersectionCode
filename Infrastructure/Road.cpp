@@ -30,6 +30,18 @@ Lane* Road::getLane(uint8 lane_number_)
     return my_laneList[0]; //only gets hit if swerr
 }
 
+/*
+*   Name: correspondingExit
+*
+*   Description: Overridden by derived classes. Should not be used.
+*
+*/
+direction Road::correspondingExit(path path_)
+{
+    SWERRINT(path_);
+    return NORTH;
+}
+
 //The following functions are used to access the values of the 
 //protected members. They all return the variable of the same name
 // and do nothing else.

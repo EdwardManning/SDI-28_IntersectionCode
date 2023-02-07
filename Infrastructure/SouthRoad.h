@@ -14,5 +14,6 @@ class SouthRoad : public Road
 {
 public:
     SouthRoad();
+    direction correspondingExit(path path_);
 private:
 };

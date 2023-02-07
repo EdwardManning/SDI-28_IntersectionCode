@@ -44,9 +44,9 @@ ExitLane::ExitLane(uint8 number_, direction direction_, path path_)
             //and half of the current lane. (no median)
             my_centerLine = intersection_params.frame_width -
                             intersection_params.lane_length -
-                            (my_number * intersection_params.lane_width) +
+                            ((my_number * intersection_params.lane_width) +
                             intersection_params.corner_width +
-                            (my_width / 2);
+                            (my_width / 2));
 
             my_startingPosition[x] = my_centerLine;
             my_endingPosition[x] = my_centerLine;
@@ -95,9 +95,9 @@ ExitLane::ExitLane(uint8 number_, direction direction_, path path_)
             //and half of the current lane. (no median)
             my_centerLine = intersection_params.frame_width - 
                             intersection_params.lane_length -
-                            (my_number * intersection_params.lane_width) +
+                            ((my_number * intersection_params.lane_width) +
                             intersection_params.corner_width +
-                            (my_width / 2);
+                            (my_width / 2));
 
             my_startingPosition[y] = my_centerLine;
             my_endingPosition[y] = my_centerLine;
