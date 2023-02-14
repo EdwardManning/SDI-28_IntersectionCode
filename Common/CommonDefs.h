@@ -145,6 +145,29 @@ const struct directionVectors
 const IntersectionParameters intersection_params;
 const SimulationParameters simulation_params;
 
+//functions used for turn modifiers
+//used with the modifier type
+static float positive_cos(float period)
+{
+    return cos(period);
+}
+
+static float positive_sin(float period)
+{
+    return sin(period);
+}
+
+static float negative_cos(float period)
+{
+    return -1 * cos(period);
+}
+
+static float negative_sin(float period)
+{
+    return -1 * sin(period);
+}
+
+//magnitude of a vector
 constexpr float MAGNITUDE(float x_value, float y_value)
 {
     return sqrt( ( pow(x_value, 2) ) + ( pow(y_value, 2) ) );

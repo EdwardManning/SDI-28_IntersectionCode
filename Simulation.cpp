@@ -14,7 +14,7 @@
 */
 Simulation::Simulation()
 {
-    car = new Car(0, STRAIGHT, my_intersection.getRoad(EAST)->getLane(6), NORMAL);
+    car = new Car(0, RIGHT, my_intersection.getRoad(WEST)->getLane(5), NORMAL);
     elapsed_time = 0;
     run();
 }
@@ -49,6 +49,7 @@ void Simulation::run()
         elapsed_time += simulation_params.time_step;
     }
     std::cout << car->timeInIntersection() << " " << car->currentPosition()[x] << " " << car->currentPosition()[y] << std::endl;
+    std::cout << elapsed_time << std::endl;
 }
 
 
@@ -64,7 +65,7 @@ void Simulation::run()
 */
 bool Simulation::completionCheck()
 {
-    return car->currentPosition()[x] > 0;
+    return car->currentPosition()[y] < intersection_params.frame_length;
 }
 
 /*
@@ -86,6 +87,10 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
        !(vehicle_->currentState() & THROUGH_INTERSECTION))
     {
         vehicle_->changeState(IN_INTERSECTION, ADD);
+        if (vehicle_->vehiclePath() != STRAIGHT)
+        {
+            vehicle_->changeState(TURNING, ADD);
+        }
     }
 
     if(vehicle_->currentState() & IN_INTERSECTION)
@@ -95,6 +100,16 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
             vehicle_->changeState(IN_INTERSECTION, REMOVE);
             setLane(vehicle_);
             vehicle_->changeState(THROUGH_INTERSECTION, ADD);
+            if(vehicle_->currentState() & TURNING)
+            {
+                direction exit_direction = my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath());
+                vehicle_->changeState(TURNING, REMOVE);
+                vehicle_->stopTurn(my_intersection.getRoad(exit_direction)->getLane(vehicle_->laneNumber()));
+            }
+        }
+        else if (vehicle_->currentState() & TURNING)
+        {
+            vehicle_->turn();
         }
     }
     
@@ -313,17 +328,17 @@ path Simulation::changeLaneDirection(Vehicle* vehicle_)
     {
         case(LEFT):
         {
-            return RIGHT;
+            return LEFT;
         }
             break;
         case(RIGHT):
         {
-            return LEFT;
+            return RIGHT;
         }
             break;
         case(STRAIGHT):
         {
-            return current_lane_path == LEFT || current_lane_path == STRAIGHT_LEFT ? RIGHT : LEFT;
+            return current_lane_path == LEFT ? RIGHT : LEFT;
         }
             break;
         default:SWERRINT(vehicle_->vehiclePath());

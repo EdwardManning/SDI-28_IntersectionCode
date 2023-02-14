@@ -25,7 +25,7 @@ EastRoad::EastRoad()
     my_laneList = new Lane*[my_totalLanes];
     my_name = DIRECTION_STR[EAST] + " " + ROAD_STR;
     my_speedLimit = intersection_params.ew_speed_limit;
-    my_startingPosition = intersection_params.intersection_width;
+    my_startingPosition = intersection_params.frame_width;
     my_endingPosition = my_startingPosition - intersection_params.lane_length;
 
     //populate laneList with lanes

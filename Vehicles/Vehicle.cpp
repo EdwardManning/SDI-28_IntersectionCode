@@ -10,7 +10,7 @@ Vehicle::Vehicle()
 //the following should never be used
 Vehicle::Vehicle(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
 {
-    SWERRINT(number_<<5 + path_<<4 + driver_type_);
+    SWERRINT(number_<<5 + path_<<2 + driver_type_);
 }
 
 /*
@@ -25,6 +25,8 @@ Vehicle::Vehicle(uint16 number_, path path_, Lane* lane_, DriverType driver_type
 */
 void Vehicle::drive()
 {
+    my_totalTime += simulation_params.time_step;
+
     if (my_state & IN_INTERSECTION)
     {
         my_timeInIntersection += simulation_params.time_step;
@@ -109,7 +111,7 @@ void Vehicle::changeLane(path direction_)
             if(direction_ == LEFT)
             {
                 my_currentVelocity[x] = velocity_magnitude * sin(-1 * PI / 6);
-                my_currentVelocity[y] = -1 * velocity_magnitude * cos(-1 * PI / 6);
+                my_currentVelocity[y] = -1 * velocity_magnitude * cos( PI / 6);
             }
             else
             {
@@ -122,13 +124,13 @@ void Vehicle::changeLane(path direction_)
         {
             if(direction_ == LEFT)
             {
-                my_currentVelocity[x] = velocity_magnitude * cos(-1 * PI / 6);
-                my_currentVelocity[y] = -1 * velocity_magnitude * sin(-1 * PI / 6);
+                my_currentVelocity[x] =  -1 * velocity_magnitude * cos(PI / 6);
+                my_currentVelocity[y] = velocity_magnitude * sin(PI / 6);
             }
             else
             {
-                my_currentVelocity[x] = velocity_magnitude * cos(PI / 6);
-                my_currentVelocity[y] = -1 * velocity_magnitude * sin(PI / 6);
+                my_currentVelocity[x] = -1 * velocity_magnitude * cos(PI / 6);
+                my_currentVelocity[y] = velocity_magnitude * sin(-1 * PI / 6);
             }
         }
             break;
@@ -136,13 +138,13 @@ void Vehicle::changeLane(path direction_)
         {
             if(direction_ == LEFT)
             {
-                my_currentVelocity[x] = -1 * velocity_magnitude * cos(PI / 6);
-                my_currentVelocity[y] = velocity_magnitude * sin(PI / 6);
+                my_currentVelocity[x] = velocity_magnitude * cos(-1 * PI / 6);
+                my_currentVelocity[y] = velocity_magnitude * sin(-1 * PI / 6);
             }
             else
             {
-                my_currentVelocity[x] = -1 * velocity_magnitude * cos(-1 * PI / 6);
-                my_currentVelocity[y] = velocity_magnitude * sin(-1 * PI / 6);
+                my_currentVelocity[x] = velocity_magnitude * cos(PI / 6);
+                my_currentVelocity[y] = velocity_magnitude * sin(PI / 6);
             }
         }
             break;
@@ -248,12 +250,56 @@ bool Vehicle::correctLane(Lane* lane_)
 }
 
 /*
+*   Name: turn
+*
+*   Description: Turns the vehicle by changing the velocity vector before drive().
+*
+*   Input: N/A
+*
+*   Output: N/A
+*
+*/
+void Vehicle::turn()
+{
+    if(my_path != LEFT && my_path != RIGHT)
+    {
+        SWERRINT(my_number<<11 + my_laneNumber<<3 + my_path);
+    }
+
+    bool direction_of_travel = my_direction == NORTH || my_direction == SOUTH ? y : x;
+    float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+
+    float theta = (PI / 2) * ((my_currentPosition[direction_of_travel] - my_stopline) / my_turnRadius[direction_of_travel]);
+
+    my_currentVelocity[x] = velocity_magnitude * my_modifier[x](theta);
+    my_currentVelocity[y] = velocity_magnitude * my_modifier[y](theta);
+}
+
+/*
+*   Name: stopTurn
+*
+*   Description: Sets the unit vector to that of the exit lane.
+*
+*   Input: lane_ -> The exit lane in question.
+*
+*   Output: N/A
+*
+*/
+void Vehicle::stopTurn(Lane* lane_)
+{
+    float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+
+    my_currentVelocity[x] = velocity_magnitude * lane_->unitVector()[x];
+    my_currentVelocity[y] = velocity_magnitude * lane_->unitVector()[y];
+}
+
+/*
 *   Name: changeState
 *
 *   Description: Adds or removes a state from the vehicle's my_state.
 *
-*   Input: state_ -> The state being added or removed.
-*          adding -> Boolean stating weather the state is being added or removed.
+*   Input: state_  -> The state being added or removed.
+*          adding_ -> Boolean stating weather the state is being added or removed.
 *         
 *   Output: N/A
 *

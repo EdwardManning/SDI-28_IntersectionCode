@@ -24,6 +24,8 @@ public:
     void changeLane(path direction_);
     void stopLaneChange();
     bool correctLane(Lane* lane_);
+    void turn();
+    void stopTurn(Lane* lane_);
 
     //less important functions
     void changeState(state state_, const bool adding_);
@@ -55,5 +57,9 @@ protected:
     uint8 my_laneNumber; //the number of the lane the vehicle is currently in
     uint8 my_maxSpeed; //the maximum speed of the vehicle
     float my_timeInIntersection; //the amount of time spent in the intersection
+    float my_totalTime; //the amount of time ti takes to fully clear the intersection
+    modifier my_modifier[2]; //the modifier used to turn if necessary
+    float my_turnRadius[2]; //the radius of the turn if necessary
+    float my_stopline; //the end of the starting road
 private:
 };
