@@ -14,9 +14,31 @@
 */
 Simulation::Simulation()
 {
-    car = new Car(0, RIGHT, my_intersection.getRoad(WEST)->getLane(5), NORMAL);
+    events.open("./Output/Events.txt");
+    if(!simulation_params.print_simulation_events)
+    {
+        events << "No Event Printing" << std::endl;
+    }
+
+    car = new Car(0, LEFT, my_intersection.getRoad(WEST)->getLane(4), NORMAL);
     elapsed_time = 0;
     run();
+}
+
+/*
+*   Name: ~Simulation
+*
+*   Description: Cleans up parts that must be cleaned up and prints results.
+*
+*   Input: N/A
+*
+*   Output: N/A
+*
+*/
+Simulation::~Simulation()
+{
+    printResults();
+    events.close();
 }
 
 /*
@@ -33,8 +55,8 @@ Simulation::Simulation()
 */
 void Simulation::run()
 {
-    debugIntersection();
-    while(completionCheck())
+    //debugIntersection();
+    while(!completionCheck())
     {
         if (car->vehicleType() == CAR)
         {
@@ -48,7 +70,6 @@ void Simulation::run()
         }
         elapsed_time += simulation_params.time_step;
     }
-    std::cout << car->timeInIntersection() << " " << car->currentPosition()[x] << " " << car->currentPosition()[y] << std::endl;
     std::cout << elapsed_time << std::endl;
 }
 
@@ -65,7 +86,7 @@ void Simulation::run()
 */
 bool Simulation::completionCheck()
 {
-    return car->currentPosition()[y] < intersection_params.frame_length;
+    return vehicleCompleted(car);
 }
 
 /*
@@ -81,15 +102,14 @@ bool Simulation::completionCheck()
 */
 void Simulation::driverPerformActions(Vehicle* vehicle_)
 {
-    std::cout << (int)vehicle_->currentState() << " " << vehicle_->currentPosition()[x] << " " << vehicle_->currentPosition()[y] << std::endl;
     if(passedStopLine(vehicle_) && 
        !(vehicle_->currentState() & IN_INTERSECTION) &&
        !(vehicle_->currentState() & THROUGH_INTERSECTION))
     {
-        vehicle_->changeState(IN_INTERSECTION, ADD);
+        changeState(vehicle_, IN_INTERSECTION, ADD);
         if (vehicle_->vehiclePath() != STRAIGHT)
         {
-            vehicle_->changeState(TURNING, ADD);
+            changeState(vehicle_, TURNING, ADD);
         }
     }
 
@@ -97,13 +117,13 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
     {
         if(passedExitStartLine(vehicle_))
         {
-            vehicle_->changeState(IN_INTERSECTION, REMOVE);
+            changeState(vehicle_, IN_INTERSECTION, REMOVE);
             setLane(vehicle_);
-            vehicle_->changeState(THROUGH_INTERSECTION, ADD);
+            changeState(vehicle_, THROUGH_INTERSECTION, ADD);
             if(vehicle_->currentState() & TURNING)
             {
                 direction exit_direction = my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath());
-                vehicle_->changeState(TURNING, REMOVE);
+                changeState(vehicle_, TURNING, REMOVE);
                 vehicle_->stopTurn(my_intersection.getRoad(exit_direction)->getLane(vehicle_->laneNumber()));
             }
         }
@@ -122,17 +142,22 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
             {
                 int8 lane_change_modifier = lane_change_direction == LEFT ? (-1) : 1;
                 uint8 new_lane = lane_change_modifier + vehicle_->laneNumber();
+                if (simulation_params.print_simulation_events)
+                {
+                    printLaneChange(vehicle_, new_lane);
+                }
                 vehicle_->setLane(new_lane);
                 if(vehicle_->correctLane(my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())))
                 {
-                    vehicle_->changeState(CHANGING_LANES, REMOVE);
+                    changeState(vehicle_, CORRECT_LANE, ADD);
+                    changeState(vehicle_, CHANGING_LANES, REMOVE);
                 }
                 vehicle_->stopLaneChange();
             }
         }
         else
         {
-            vehicle_->changeState(CHANGING_LANES, ADD);
+            changeState(vehicle_, CHANGING_LANES, ADD);
             vehicle_->changeLane(lane_change_direction);
         }
     }
@@ -417,4 +442,118 @@ bool Simulation::overCenterLine(Vehicle* vehicle_, path lane_change_direction_)
         default: SWERRINT(vehicle_->vehicleDirection());
     }
     return true;
+}
+
+/*
+*   Name: changeState
+*
+*   Description: Responsible for sending state change to vehicle and printing event.
+*
+*   Input: vehicle_ -> The vehicle in question.
+*          state_   -> The state being sent to the vehicle.
+*          adding_  -> Boolean stating if state is being added or removed.
+*
+*   Output: N/A
+*
+*/
+void Simulation::changeState(Vehicle* vehicle_, state state_, const bool adding_)
+{
+    if (simulation_params.print_simulation_events)
+    {
+        uint8 current_state = vehicle_->currentState();
+        vehicle_->changeState(state_, adding_);
+        events << elapsed_time << " Vehicle " << vehicle_->number() << ": changed from state " << (int)current_state << " to " << (int)vehicle_->currentState() << std::endl;
+    }
+    else
+    {
+        vehicle_->changeState(state_, adding_);
+    }
+}
+
+/*
+*   Name: vehicleCompleted
+*
+*   Description: Determines if a vehicle is through the intersection or not.
+*
+*   Input: vehicle_ -> The vehicle in question.
+*
+*   Output: True if the vehicle has completed the intersection, false otherwise.
+*
+*/
+bool Simulation::vehicleCompleted(Vehicle* vehicle_)
+{
+    if (vehicle_->isCompleted())
+    {
+        return true;
+    }
+
+    if (vehicle_->currentState() & THROUGH_INTERSECTION) //cannot be completed without going through the intersection
+    {
+        bool max_component = maxComponent<float>(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+        if (vehicle_->currentVelocity()[max_component] > 0) //heading in a direction with a positive velocity vector
+        {
+            if(max_component) //if in y direction
+            {
+                if (vehicle_->currentPosition()[max_component] > intersection_params.frame_length) //if it's off the screen in the y direction
+                {
+                    if(simulation_params.print_simulation_events)
+                    {
+                        printCompletion(vehicle_);
+                    }
+                    vehicle_->completed();
+                    return true;
+                }
+            }
+            else
+            {
+                if (vehicle_->currentPosition()[max_component] > intersection_params.frame_width) //if it's off the screen in the x direction
+                {
+                    if(simulation_params.print_simulation_events)
+                    {
+                        printCompletion(vehicle_);
+                    }
+                    vehicle_->completed();
+                    return true;
+                }
+            }
+        }
+        else //negative velocity vector (must go off at 0 in one of the two directions)
+        {
+            if (vehicle_->currentPosition()[max_component] < 0) //current position is off the frame
+            {
+                if(simulation_params.print_simulation_events)
+                {
+                    printCompletion(vehicle_);
+                }
+                vehicle_->completed();
+                return true;
+            }
+        }
+    }
+    return false; //is not through intersection
+}
+
+
+//Printing funtions, no need for explanation
+//They print things
+void Simulation::printCompletion(Vehicle* vehicle_)
+{
+    events << elapsed_time << " Vehicle " << vehicle_->number() << " has completed the intersection" << std::endl;
+}
+
+void Simulation::printResults()
+{
+    //This will become much more elaborate once
+    //multiple vehicles has been added in
+    //should eventually display average times for various
+    //actions
+
+    results.open("./Output/Results.txt");
+    results << car->totalTime() << std::endl;
+    results.close();
+}
+
+void Simulation::printLaneChange(Vehicle* vehicle_, uint8 new_lane_)
+{
+    events << elapsed_time << " Vehicle " << vehicle_->number() << ": changed from lane " << (int)vehicle_->laneNumber() << " to " << (int)new_lane_ << std::endl;
 }

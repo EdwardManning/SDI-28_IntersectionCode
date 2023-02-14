@@ -172,4 +172,16 @@ constexpr float MAGNITUDE(float x_value, float y_value)
 {
     return sqrt( ( pow(x_value, 2) ) + ( pow(y_value, 2) ) );
 }
+
+template <typename type>
+type max(type a, type b)
+{
+    return (abs(a) > abs(b)) ? a : b;
+}
+
+template <typename type>
+bool maxComponent(type x_component, type y_component)
+{
+    return (abs(x_component) > abs(y_component)) ? x : y;
+}
 #endif

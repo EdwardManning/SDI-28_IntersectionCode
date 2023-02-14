@@ -25,6 +25,11 @@ Vehicle::Vehicle(uint16 number_, path path_, Lane* lane_, DriverType driver_type
 */
 void Vehicle::drive()
 {
+    if(simulation_params.print_vehicle_info)
+    { 
+        printStep();
+    }
+
     my_totalTime += simulation_params.time_step;
 
     if (my_state & IN_INTERSECTION)
@@ -206,7 +211,7 @@ void Vehicle::stopLaneChange()
 *   Output: True if it is a viable lane for the vehicle, false otherwise.
 *
 */
-bool Vehicle::correctLane(Lane* lane_)
+bool Vehicle::correctLane(Lane* lane_, bool initialization_)
 {
     switch(my_path)
     {
@@ -216,7 +221,10 @@ bool Vehicle::correctLane(Lane* lane_)
                lane_->lanePath() == STRAIGHT_LEFT ||
                lane_->lanePath() == ALL_PATHS)
             {
-                changeState(CORRECT_LANE, ADD);
+                if(initialization_)
+                {
+                    changeState(CORRECT_LANE, ADD);
+                }
                 return true;
             }
         }
@@ -228,7 +236,10 @@ bool Vehicle::correctLane(Lane* lane_)
                lane_->lanePath() == STRAIGHT_RIGHT ||
                lane_->lanePath() == ALL_PATHS)
             {
-                changeState(CORRECT_LANE, ADD);
+                if(initialization_)
+                {
+                    changeState(CORRECT_LANE, ADD);
+                }
                 return true;
             }
         }
@@ -239,7 +250,10 @@ bool Vehicle::correctLane(Lane* lane_)
                lane_->lanePath() == STRAIGHT_RIGHT ||
                lane_->lanePath() == ALL_PATHS)
             {
-                changeState(CORRECT_LANE, ADD);
+                if(initialization_)
+                {
+                    changeState(CORRECT_LANE, ADD);
+                }
                 return true;
             }
         }
@@ -345,6 +359,57 @@ void Vehicle::setLane(uint8 lane_number_)
     my_laneNumber = lane_number_;
 }
 
+/*
+*   Name: completed
+*
+*   Description: Sets my_completion status to true (meaning it has 
+*                completed the intersection).
+*
+*   Input: N/A
+*
+*   Output: N/A
+*
+*/
+void Vehicle::completed()
+{
+    my_completionStatus = true;
+
+    if(simulation_params.print_vehicle_info)
+    { 
+        printStep();
+        printFinalInformation();
+    }
+}
+
+//Printing funtions, no need for explanation
+//They print things
+void Vehicle::printStartingInformation()
+{
+    info << "****************************************" << std::endl;
+    info << "*" << std::endl;
+    info << "* Vehicle Name: " << my_name << std::endl;
+    info << "* Vehicle Number: " << my_number << std::endl;
+    info << "* Driver Type: " << DRIVER_TYPE_STR[my_driverType] << std::endl;
+    info << "*" << std::endl;
+    info << "* Starting Lane: " << (int)my_laneNumber << std::endl;
+    info << "* Starting Road: " << DIRECTION_STR[my_direction] << std::endl;
+    info << "* Path: " << PATH_STR[my_path] << std::endl;
+    info << "*" << std::endl;
+    info << "****************************************" << std::endl;
+}
+
+void Vehicle::printStep()
+{
+    info << (int)my_state << "\t" << my_currentPosition[x] << "\t" << my_currentPosition[y] << std::endl;
+}
+
+void Vehicle::printFinalInformation()
+{
+    info << std::endl;
+    info << "****************************************" << std::endl;
+    info << my_totalTime << "\t" << my_timeInIntersection << "\t" << my_stopTime << std::endl;
+    info << "****************************************" << std::endl;
+}
 //The following functions are used to access the values of the 
 //protected members. They all return the variable of the same name
 //and do nothing else.
@@ -411,4 +476,14 @@ uint8 Vehicle::maxSpeed()
 float Vehicle::timeInIntersection()
 {
     return my_timeInIntersection;
+}
+
+float Vehicle::totalTime()
+{
+    return my_totalTime;
+}
+
+bool Vehicle::isCompleted()
+{
+    return my_completionStatus;
 }
