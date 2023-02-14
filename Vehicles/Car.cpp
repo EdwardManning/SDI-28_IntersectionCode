@@ -20,10 +20,12 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
     my_number = number_;
     my_vehicleType = CAR;
     my_driverType = driver_type_;
-    my_name = std::to_string(my_number) + " " + VEHICLE_TYPE_STR[my_vehicleType] + " " + DRIVER_TYPE_STR[my_driverType];
+    my_name = VEHICLE_TYPE_STR[my_vehicleType] + " " + std::to_string(my_number);
     my_maxSpeed = lane_->speedLimit() * DRIVER_TYPE_MODIFIER[my_driverType];
     my_timeInIntersection = 0;
     my_totalTime = 0;
+    my_stopTime = 0;
+    my_completionStatus = false;
 
     my_currentPosition[x] = lane_->startingPosition()[x];
     my_currentPosition[y] = lane_->startingPosition()[y];
@@ -49,7 +51,7 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
         my_stopline = lane_->endingPosition()[x];
     }
     
-    correctLane(lane_);
+    correctLane(lane_, true);
 
     if(my_path != STRAIGHT)
     {
@@ -154,5 +156,29 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
                 break;
             default: SWERRINT(my_direction);
         }
+    }
+    if (simulation_params.print_vehicle_info)
+    {
+        std::string filename = "./Output/VehicleOutput/Vehicle" + std::to_string((int)my_number) + ".txt";
+        info.open(filename);
+        printStartingInformation();
+    }
+}
+
+/*
+*   Name: ~Car
+*
+*   Description: Performs necessary cleanup.
+*
+*   Input: N/A
+*
+*   Output: N/A
+*
+*/
+Car::~Car()
+{
+    if (simulation_params.print_vehicle_info && info.is_open())
+    {
+        info.close();
     }
 }

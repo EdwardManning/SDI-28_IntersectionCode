@@ -1,4 +1,7 @@
 #pragma once
+
+#include <fstream>
+
 #include "../Common/CommonDefs.h"
 #include "../Infrastructure/Lane.h"
 
@@ -23,13 +26,14 @@ public:
     void accelerate();
     void changeLane(path direction_);
     void stopLaneChange();
-    bool correctLane(Lane* lane_);
+    bool correctLane(Lane* lane_, bool initialization_ = false);
     void turn();
     void stopTurn(Lane* lane_);
 
     //less important functions
     void changeState(state state_, const bool adding_);
     void setLane(uint8 lane_number_);
+    void completed();
     float* currentPosition();
     float* currentVelocity();
     float* currentAcceleration();
@@ -43,7 +47,14 @@ public:
     uint8 laneNumber();
     uint8 maxSpeed();
     float timeInIntersection();
+    float totalTime();
+    bool isCompleted();
 protected:
+    //printing functions
+    void printStartingInformation();
+    void printStep();
+    void printFinalInformation();
+    
     float my_currentPosition[2]; //the current position of the vehicle
     float my_currentVelocity[2]; //the current velocity of the vehicle
     float my_currentAcceleration[2]; //the current acceleration of the vehicle
@@ -57,9 +68,12 @@ protected:
     uint8 my_laneNumber; //the number of the lane the vehicle is currently in
     uint8 my_maxSpeed; //the maximum speed of the vehicle
     float my_timeInIntersection; //the amount of time spent in the intersection
-    float my_totalTime; //the amount of time ti takes to fully clear the intersection
+    float my_totalTime; //the amount of time it took to fully clear the intersection
+    float my_stopTime; //the amount of time spent stopped
     modifier my_modifier[2]; //the modifier used to turn if necessary
     float my_turnRadius[2]; //the radius of the turn if necessary
     float my_stopline; //the end of the starting road
+    bool my_completionStatus; //true if completed intersection, false otherwise
+    std::ofstream info;
 private:
 };

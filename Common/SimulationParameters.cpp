@@ -14,5 +14,6 @@
 */
 SimulationParameters::SimulationParameters()
 {
-    //does nothing
+    print_simulation_events = true;
+    print_vehicle_info = true;
 }
