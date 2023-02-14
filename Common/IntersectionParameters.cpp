@@ -32,6 +32,8 @@ IntersectionParameters::IntersectionParameters()
 */
 void IntersectionParameters::calculateIntersectionInformation()
 {
+    bool x = 0;
+    bool y = 1;
     //Length is verticle on your screen, width is horizontal
 
     //The length of the intersection is the width of the east/west lane (since the lane itself is horizontal, making its' width verticle)
@@ -56,22 +58,37 @@ void IntersectionParameters::calculateIntersectionInformation()
     if (intersection_width % 2 == 0)
     {
         //if the intersection's width is even then the centerpoint at x is simply half the frame width (the lanes are always equal in length)
-        center_coordinates[0] = frame_width / 2; 
+        center_coordinates[x] = frame_width / 2; 
     }
     else
     {
         //if the width is not equal then it must be calculated by getting the adding one to half of the frame width -1
         //i.e. 5 / 2 = 2.5 (not allowed) therefore ((5 - 1) / 2) + 1 = 3 (which is proper)
-        center_coordinates[0] = ( (frame_width - 1) / 2 ) + 1;
+        center_coordinates[x] = ( (frame_width - 1) / 2 ) + 1;
     }
 
     //the same logic is applied to the length as it was to the width
     if (intersection_length % 2 == 0)
     {
-        center_coordinates[1] = frame_length / 2;
+        center_coordinates[y] = frame_length / 2;
     }
     else
     {
-        center_coordinates[1] = ( (frame_length - 1) / 2 ) + 1;
+        center_coordinates[y] = ( (frame_length - 1) / 2 ) + 1;
     }
+
+    //The following are used by vehicles to calculate the change in the velocity vector during their turns
+    ns_left_turn_radii[x] = corner_width + (ns_number_of_exits * lane_width) + ns_median_width + (0.5 * lane_width);
+    ns_left_turn_radii[y] = corner_width + (ew_number_of_entries * lane_width) + ew_median_width + (0.5 * lane_width);
+    
+    ew_left_turn_radii[x] = corner_width + (ns_number_of_entries * lane_width) + ns_median_width + (0.5 * lane_width);
+    ew_left_turn_radii[y] = corner_width + (ew_number_of_exits * lane_width) + ew_median_width + (0.5 * lane_width);
+
+    //these will need to be changed once ghost lanes are added
+    ns_right_turn_radii[x] = corner_width + (0.5 * lane_width);
+    ns_right_turn_radii[y] = corner_width + (0.5 * lane_width);
+
+    ew_right_turn_radii[x] = corner_width + (0.5 * lane_width);
+    ew_right_turn_radii[y] = corner_width + (0.5 * lane_width);
 }
+

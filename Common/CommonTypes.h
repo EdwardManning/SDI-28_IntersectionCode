@@ -6,3 +6,5 @@ typedef unsigned short uint16;
 typedef unsigned int uint32;
 
 typedef signed char int8;
+
+typedef float (*modifier)(float period);

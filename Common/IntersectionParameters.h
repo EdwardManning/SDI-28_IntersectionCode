@@ -1,5 +1,6 @@
 #pragma once
 #include "./CommonTypes.h"
+#include <cmath>
 
 
 /*
@@ -28,11 +29,16 @@ public:
     uint8 ew_number_of_exits = 3;
     uint8 ew_median_width = 2; //in m (must be even number)
     //intersection params (calculated not inputed)
+    float ns_left_turn_radii[2];
+    float ns_right_turn_radii[2];
+    float ew_left_turn_radii[2];
+    float ew_right_turn_radii[2];
     uint8 intersection_length;
     uint8 intersection_width;
     uint16 frame_length;
     uint16 frame_width;
     uint16 center_coordinates[2];
+
 private:
     void calculateIntersectionInformation();
 };
