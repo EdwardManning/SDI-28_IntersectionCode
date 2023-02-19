@@ -12,7 +12,7 @@
                 "${workspaceFolder}/Common/*.cpp",
                 "${workspaceFolder}/Vehicles/*.cpp",
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+                "${fileDirname}\\source.exe"
             ],
             "options": {
                 "cwd": "${fileDirname}"

@@ -225,6 +225,7 @@ bool Vehicle::correctLane(Lane* lane_, bool initialization_)
                 {
                     changeState(CORRECT_LANE, ADD);
                 }
+                my_stoplineCenter = my_currentPosition[minComponent<float>(my_currentVelocity[x], my_currentVelocity[y])];
                 return true;
             }
         }
@@ -240,6 +241,7 @@ bool Vehicle::correctLane(Lane* lane_, bool initialization_)
                 {
                     changeState(CORRECT_LANE, ADD);
                 }
+                my_stoplineCenter = my_currentPosition[minComponent<float>(my_currentVelocity[x], my_currentVelocity[y])];
                 return true;
             }
         }
@@ -254,6 +256,7 @@ bool Vehicle::correctLane(Lane* lane_, bool initialization_)
                 {
                     changeState(CORRECT_LANE, ADD);
                 }
+                my_stoplineCenter = my_currentPosition[minComponent<float>(my_currentVelocity[x], my_currentVelocity[y])];
                 return true;
             }
         }
@@ -281,12 +284,41 @@ void Vehicle::turn()
     }
 
     bool direction_of_travel = my_direction == NORTH || my_direction == SOUTH ? y : x;
+    bool direction_changed_to = direction_of_travel ? x : y; //if direction of travel is north or south then x, otherwize y
+
+    float dot_distance_travelled = abs(my_currentPosition[direction_of_travel] - my_stopline);
+    float dct_distance_travelled = abs(my_currentPosition[direction_changed_to] - my_stoplineCenter);
+
     float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
 
-    float theta = (PI / 2) * ((my_currentPosition[direction_of_travel] - my_stopline) / my_turnRadius[direction_of_travel]);
+    float theta;
 
-    my_currentVelocity[x] = velocity_magnitude * my_modifier[x](theta);
-    my_currentVelocity[y] = velocity_magnitude * my_modifier[y](theta);
+    if (my_turnRadius[direction_of_travel] > my_turnRadius[direction_changed_to])
+    {
+        if (my_turnRadius[direction_of_travel] - dot_distance_travelled <= my_turnRadius[direction_changed_to])
+        {
+            theta = (0.5 * PI) * ((dot_distance_travelled - (my_turnRadius[direction_of_travel] - my_turnRadius[direction_changed_to])) / my_turnRadius[direction_changed_to]);
+        }
+        else
+        {
+            theta = 0;
+        }
+    }
+    else
+    {
+        if ((my_currentPosition[direction_of_travel] - my_stopline) >= my_turnRadius[direction_of_travel])
+        {
+            theta = (PI / 2);
+        }
+        else
+        {
+            theta = (0.5 * PI) * ((my_currentPosition[direction_of_travel] - my_stopline) / my_turnRadius[direction_of_travel]);
+        }
+    }
+
+    my_currentVelocity[direction_of_travel] = velocity_magnitude * my_modifier[direction_of_travel](theta);
+    my_currentVelocity[direction_changed_to] = velocity_magnitude * my_modifier[direction_changed_to](theta);
+    
 }
 
 /*
@@ -400,7 +432,8 @@ void Vehicle::printStartingInformation()
 
 void Vehicle::printStep()
 {
-    info << (int)my_state << "\t" << my_currentPosition[x] << "\t" << my_currentPosition[y] << std::endl;
+    info << (int)my_state << "\t" << my_currentPosition[x] << "\t" << my_currentPosition[y] << "\t";
+    info << "\t" << my_currentVelocity[x] << "\t" << my_currentVelocity[y] << std::endl;
 }
 
 void Vehicle::printFinalInformation()

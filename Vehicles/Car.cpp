@@ -27,6 +27,8 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
     my_stopTime = 0;
     my_completionStatus = false;
 
+    my_stoplineCenter = -1; //for swerr purposes
+
     my_currentPosition[x] = lane_->startingPosition()[x];
     my_currentPosition[y] = lane_->startingPosition()[y];
 
@@ -86,7 +88,7 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
             {
                 if(my_path == LEFT)
                 {
-                    my_modifier[x] = positive_sin;
+                    my_modifier[x] = negative_sin;
                     my_modifier[y] = negative_cos;
 
                     my_turnRadius[x] = intersection_params.ns_left_turn_radii[x];
@@ -111,7 +113,7 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
                 if(my_path == LEFT)
                 {
                     my_modifier[x] = negative_cos;
-                    my_modifier[y] = negative_sin;
+                    my_modifier[y] = positive_sin;
 
                     my_turnRadius[x] = intersection_params.ew_left_turn_radii[x];
                     my_turnRadius[y] = intersection_params.ew_left_turn_radii[y];
