@@ -73,6 +73,7 @@ protected:
     modifier my_modifier[2]; //the modifier used to turn if necessary
     float my_turnRadius[2]; //the radius of the turn if necessary
     float my_stopline; //the end of the starting road
+    float my_stoplineCenter; //the center of the lane at the stop point
     bool my_completionStatus; //true if completed intersection, false otherwise
     std::ofstream info;
 private:

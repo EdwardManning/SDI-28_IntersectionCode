@@ -55,7 +55,7 @@ Simulation::~Simulation()
 */
 void Simulation::run()
 {
-    //debugIntersection();
+    debugIntersection();
     while(!completionCheck())
     {
         if (car->vehicleType() == CAR)
@@ -329,7 +329,9 @@ void Simulation::debugIntersection()
         std::cout << my_intersection.getRoad(i)->name() << std::endl;
         for(uint8 j = 0; j < my_intersection.getRoad(i)->totalLanes(); j++)
         {
-            std::cout << my_intersection.getRoad(i)->getLane(j)->name() << " " << my_intersection.getRoad(i)->getLane(j)->centerLine() << std::endl;
+            std::cout << my_intersection.getRoad(i)->getLane(j)->name() << " " << my_intersection.getRoad(i)->getLane(j)->centerLine() << " ";
+            std::cout << my_intersection.getRoad(i)->getLane(j)->startingPosition()[x] << " " << my_intersection.getRoad(i)->getLane(j)->startingPosition()[y] << " ";
+            std::cout << my_intersection.getRoad(i)->getLane(j)->endingPosition()[x] << " " << my_intersection.getRoad(i)->getLane(j)->endingPosition()[x] << std::endl;
         }
     }
 }
