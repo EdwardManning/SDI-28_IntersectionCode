@@ -421,7 +421,7 @@ void Vehicle::printStartingInformation()
     info << "*" << std::endl;
     info << "* Vehicle Name: " << my_name << std::endl;
     info << "* Vehicle Number: " << my_number << std::endl;
-    info << "* Driver Type: " << DRIVER_TYPE_STR[my_driverType] << std::endl;
+    info << "* Driver Type: " << my_driver->name() << std::endl;
     info << "*" << std::endl;
     info << "* Starting Lane: " << (int)my_laneNumber << std::endl;
     info << "* Starting Road: " << DIRECTION_STR[my_direction] << std::endl;
@@ -488,7 +488,7 @@ uint8 Vehicle::currentState()
 
 DriverType Vehicle::driverType()
 {
-    return my_driverType;
+    return my_driver->driverType();
 }
 
 direction Vehicle::vehicleDirection()

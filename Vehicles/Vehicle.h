@@ -4,6 +4,8 @@
 
 #include "../Common/CommonDefs.h"
 #include "../Infrastructure/Lane.h"
+#include "./Driver.h"
+#include "./HumanDriver.h"
 
 /*
 *   Name: Vehicle
@@ -63,7 +65,6 @@ protected:
     VehicleType my_vehicleType; //the type of vehicle
     path my_path; //the path the vehicle is taking
     uint8 my_state; //the current state of the vehicle
-    DriverType my_driverType; //the driver type of the vehicle
     direction my_direction; //the direction the vehicle started from
     uint8 my_laneNumber; //the number of the lane the vehicle is currently in
     uint8 my_maxSpeed; //the maximum speed of the vehicle
@@ -76,5 +77,7 @@ protected:
     float my_stoplineCenter; //the center of the lane at the stop point
     bool my_completionStatus; //true if completed intersection, false otherwise
     std::ofstream info;
+
+    Driver* my_driver;
 private:
 };
