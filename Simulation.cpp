@@ -20,7 +20,7 @@ Simulation::Simulation()
         events << "No Event Printing" << std::endl;
     }
 
-    car = new Car(0, LEFT, my_intersection.getRoad(WEST)->getLane(4), NORMAL);
+    car = new Car(0, STRAIGHT, my_intersection.getRoad(WEST)->getLane(3), NORMAL);
     elapsed_time = 0;
     run();
 }

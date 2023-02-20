@@ -31,6 +31,7 @@ public:
     bool correctLane(Lane* lane_, bool initialization_ = false);
     void turn();
     void stopTurn(Lane* lane_);
+    bool collisionCheck(Vehicle* vehicle_);
 
     //less important functions
     void changeState(state state_, const bool adding_);
@@ -50,8 +51,11 @@ public:
     uint8 maxSpeed();
     float timeInIntersection();
     float totalTime();
+    float* exteriorPosition(vehiclePoints vehicle_point_);
     bool isCompleted();
 protected:
+    void draw(bool initialization_ = false);
+
     //printing functions
     void printStartingInformation();
     void printStep();
@@ -76,8 +80,9 @@ protected:
     float my_stopline; //the end of the starting road
     float my_stoplineCenter; //the center of the lane at the stop point
     bool my_completionStatus; //true if completed intersection, false otherwise
-    std::ofstream info;
+    Driver* my_driver; //the driver of the vehicle
+    float my_exteriorPosition[TOTAL_POINTS][TOTAL_DIMENSIONS]; //holds the current position of the exterior of the vehicle
 
-    Driver* my_driver;
+    std::ofstream info;
 private:
 };

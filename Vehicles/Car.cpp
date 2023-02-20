@@ -165,6 +165,7 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
         info.open(filename);
         printStartingInformation();
     }
+    draw(true);
 }
 
 /*

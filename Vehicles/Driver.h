@@ -20,5 +20,7 @@ protected:
     float my_modifier;
     float my_maximumAcceleration;
     float my_reactionTime;
+    float my_minFollowingDistance;
+    float my_minStopDistance;
 private:
 };
