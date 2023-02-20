@@ -7,6 +7,7 @@
 #include "./CommonTypes.h"
 #include "./IntersectionParameters.h"
 #include "./SimulationParameters.h"
+#include "./VehicleParameters.h"
 
 //for software error (SWERR) reporting purposes
 #define SWERRINT(x) fprintf(stderr, "SWERR at %s:%d - (%d)\n", __FILE__, __LINE__, x)
@@ -36,6 +37,7 @@ const bool ADD = 1;
 //for coordinates
 const bool x = 0;
 const bool y = 1;
+const uint8 TOTAL_DIMENSIONS = 2; //there are only 2 dimensions, x and y
 
 //lane types
 const bool ENTRY_LANE = 0;
@@ -131,6 +133,41 @@ const float DRIVER_TYPE_MODIFIER[]
     1.05,
 };
 
+//vehicle coordinate points correspond to
+//specific parts of the vehicle
+//used for defining vehicles as 2D instead of as points
+enum vehiclePoints
+{
+    FRONT_LEFT,     //0
+    FRONT_BUMPER,   //1
+    FRONT_RIGHT,    //2
+    BACK_LEFT,      //3
+    BACK_BUMPER,    //4
+    BACK_RIGHT,     //5
+    TOTAL_POINTS,   //6
+};
+
+static vehiclePoints getVehiclePoint(uint8 value)
+{
+    switch(value)
+    {
+        case(0): return FRONT_LEFT;
+            break;
+        case(1): return FRONT_BUMPER;
+            break;
+        case(2): return FRONT_RIGHT;
+            break;
+        case(3): return BACK_LEFT;
+            break;
+        case(4): return BACK_BUMPER;
+            break;
+        case(5): return BACK_RIGHT;
+            break;
+        default: SWERRINT(value);
+    };
+    return FRONT_LEFT;
+}
+
 //direction vectors to set lane velocity modifiers
 //will be used by vehicles to initialize velocity
 //Note: direction in title relates to direction travelling not direction coming from
@@ -146,6 +183,7 @@ const struct directionVectors
 //constant variable holding all of the necessary parameters
 const IntersectionParameters intersection_params;
 const SimulationParameters simulation_params;
+const VehicleParameters vehicle_params;
 
 //functions used for turn modifiers
 //used with the modifier type
@@ -187,6 +225,12 @@ type max(type a, type b)
 }
 
 template <typename type>
+type min(type a, type b)
+{
+    return (abs(a) < abs(b)) ? a : b;
+}
+
+template <typename type>
 bool maxComponent(type x_component, type y_component)
 {
     return (abs(x_component) > abs(y_component)) ? x : y;
@@ -196,5 +240,11 @@ template <typename type>
 bool minComponent(type x_component, type y_component)
 {
     return (abs(x_component) > abs(y_component)) ? y : x;
+}
+
+template <typename type>
+bool isPositive(type value)
+{
+    return value >= 0;
 }
 #endif

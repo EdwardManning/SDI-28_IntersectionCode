@@ -45,6 +45,7 @@ void Vehicle::drive()
     {
         SWERRINT(my_state);
     }
+    draw();
 }
 
 /*
@@ -339,6 +340,33 @@ void Vehicle::stopTurn(Lane* lane_)
     my_currentVelocity[y] = velocity_magnitude * lane_->unitVector()[y];
 }
 
+bool Vehicle::collisionCheck(Vehicle* vehicle_)
+{
+    //dot means direction of travel
+    bool dot = maxComponent<float>(my_currentVelocity[x], my_currentVelocity[y]);
+    bool not_dot = dot ? x : y; //y is true so if dot is y then x, otherwise y
+
+    for(uint8 i = 0; i < TOTAL_POINTS; i++)
+    {
+        float dot_position = vehicle_->exteriorPosition(getVehiclePoint(i))[dot];
+        float not_dot_position = vehicle_->exteriorPosition(getVehiclePoint(i))[not_dot];
+
+        float dot_max = max<float>(my_exteriorPosition[FRONT_BUMPER][dot], my_exteriorPosition[BACK_BUMPER][dot]);
+        float dot_min = min<float>(my_exteriorPosition[FRONT_BUMPER][dot], my_exteriorPosition[BACK_BUMPER][dot]);
+        float not_dot_max = max<float>(my_exteriorPosition[FRONT_LEFT][not_dot], my_exteriorPosition[FRONT_RIGHT][not_dot]);
+        float not_dot_min = min<float>(my_exteriorPosition[FRONT_LEFT][not_dot], my_exteriorPosition[FRONT_RIGHT][not_dot]);
+
+        if ((not_dot_position > not_dot_min)
+            && (not_dot_position < not_dot_max)
+            && (dot_position > dot_min)
+            && (dot_position < dot_max))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 /*
 *   Name: changeState
 *
@@ -413,6 +441,172 @@ void Vehicle::completed()
     }
 }
 
+
+/*
+*   Name: draw
+*
+*   Description: Determines the new exterior points. Once
+*                the center of the vehicle moves, so do the exterior
+*                points. This function defines the points based on
+*                the current center position and velocity vector.
+*
+*   Input: N/A
+*
+*   Output: N/A
+*
+*/
+void Vehicle::draw(bool initialization_)
+{
+    //dot means direction of travel
+    bool dot = maxComponent<float>(my_currentVelocity[x], my_currentVelocity[y]);
+    bool not_dot = dot ? x : y; //if the direction of travel is true (y) then x is not 
+    bool positive_dot = isPositive<float>(my_currentVelocity[dot]);
+    
+
+    if(my_state & TURNING)
+    {
+        float theta = atan(my_currentVelocity[not_dot] / my_currentVelocity[dot]);
+
+        my_exteriorPosition[FRONT_BUMPER][dot] = my_currentPosition[dot] + (0.5 * vehicle_params.vehicle_length * cos(theta));
+        my_exteriorPosition[FRONT_BUMPER][not_dot] = my_currentPosition[not_dot] + (0.5 * vehicle_params.vehicle_length * sin(theta));
+        
+        my_exteriorPosition[BACK_BUMPER][dot] = my_currentPosition[dot] - (0.5 * vehicle_params.vehicle_length * cos(theta));
+        my_exteriorPosition[BACK_BUMPER][not_dot] = my_currentPosition[not_dot] - (0.5 * vehicle_params.vehicle_length * sin(theta));
+
+        if(positive_dot)
+        {
+            if(dot) //headed south
+            {
+                my_exteriorPosition[FRONT_LEFT][dot] = my_exteriorPosition[FRONT_BUMPER][dot] + (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[FRONT_LEFT][not_dot] = my_exteriorPosition[FRONT_BUMPER][not_dot] + (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[FRONT_RIGHT][dot] = my_exteriorPosition[FRONT_BUMPER][dot] - (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[FRONT_RIGHT][not_dot] = my_exteriorPosition[FRONT_BUMPER][not_dot] - (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[BACK_LEFT][dot] = my_exteriorPosition[BACK_BUMPER][dot] + (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[BACK_LEFT][not_dot] = my_exteriorPosition[BACK_BUMPER][not_dot] + (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[BACK_RIGHT][dot] = my_exteriorPosition[BACK_BUMPER][dot] - (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[BACK_RIGHT][not_dot] = my_exteriorPosition[BACK_BUMPER][not_dot] - (0.5 * vehicle_params.vehicle_width * cos(theta));
+            }
+            else //headed east
+            {
+                my_exteriorPosition[FRONT_LEFT][dot] = my_exteriorPosition[FRONT_BUMPER][dot] - (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[FRONT_LEFT][not_dot] = my_exteriorPosition[FRONT_BUMPER][not_dot] - (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[FRONT_RIGHT][dot] = my_exteriorPosition[FRONT_BUMPER][dot] + (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[FRONT_RIGHT][not_dot] = my_exteriorPosition[FRONT_BUMPER][not_dot] + (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[BACK_LEFT][dot] = my_exteriorPosition[BACK_BUMPER][dot] - (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[BACK_LEFT][not_dot] = my_exteriorPosition[BACK_BUMPER][not_dot] - (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[BACK_RIGHT][dot] = my_exteriorPosition[BACK_BUMPER][dot] + (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[BACK_RIGHT][not_dot] = my_exteriorPosition[BACK_BUMPER][not_dot] + (0.5 * vehicle_params.vehicle_width * cos(theta));
+            }
+            
+        }
+        else
+        {
+            if(dot) //headed north
+            {
+                my_exteriorPosition[FRONT_LEFT][dot] = my_exteriorPosition[FRONT_BUMPER][dot] - (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[FRONT_LEFT][not_dot] = my_exteriorPosition[FRONT_BUMPER][not_dot] - (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[FRONT_RIGHT][dot] = my_exteriorPosition[FRONT_BUMPER][dot] + (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[FRONT_RIGHT][not_dot] = my_exteriorPosition[FRONT_BUMPER][not_dot] + (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[BACK_LEFT][dot] = my_exteriorPosition[BACK_BUMPER][dot] - (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[BACK_LEFT][not_dot] = my_exteriorPosition[BACK_BUMPER][not_dot] - (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[BACK_RIGHT][dot] = my_exteriorPosition[BACK_BUMPER][dot] + (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[BACK_RIGHT][not_dot] = my_exteriorPosition[BACK_BUMPER][not_dot] + (0.5 * vehicle_params.vehicle_width * cos(theta));
+            }
+            else //headed west
+            {
+                my_exteriorPosition[FRONT_LEFT][dot] = my_exteriorPosition[FRONT_BUMPER][dot] + (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[FRONT_LEFT][not_dot] = my_exteriorPosition[FRONT_BUMPER][not_dot] + (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[FRONT_RIGHT][dot] = my_exteriorPosition[FRONT_BUMPER][dot] - (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[FRONT_RIGHT][not_dot] = my_exteriorPosition[FRONT_BUMPER][not_dot] - (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[BACK_LEFT][dot] = my_exteriorPosition[BACK_BUMPER][dot] + (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[BACK_LEFT][not_dot] = my_exteriorPosition[BACK_BUMPER][not_dot] + (0.5 * vehicle_params.vehicle_width * cos(theta));
+
+                my_exteriorPosition[BACK_RIGHT][dot] = my_exteriorPosition[BACK_BUMPER][dot] - (0.5 * vehicle_params.vehicle_width * sin(theta));
+                my_exteriorPosition[BACK_RIGHT][not_dot] = my_exteriorPosition[BACK_BUMPER][not_dot] - (0.5 * vehicle_params.vehicle_width * cos(theta));
+            }
+        }
+    }
+    else
+    {
+        if(positive_dot)
+        {
+            my_exteriorPosition[FRONT_BUMPER][dot] = my_currentPosition[dot] + (0.5 * vehicle_params.vehicle_length);
+            my_exteriorPosition[BACK_BUMPER][dot] = my_currentPosition[dot] - (0.5 * vehicle_params.vehicle_length);
+        }
+        else
+        {
+            my_exteriorPosition[FRONT_BUMPER][dot] = my_currentPosition[dot] - (0.5 * vehicle_params.vehicle_length);
+            my_exteriorPosition[BACK_BUMPER][dot] = my_currentPosition[dot] + (0.5 * vehicle_params.vehicle_length);
+        }
+        
+
+        if((my_exteriorPosition[FRONT_BUMPER][not_dot] != my_exteriorPosition[BACK_BUMPER][not_dot]) 
+           || (my_exteriorPosition[FRONT_BUMPER][not_dot] != my_currentPosition[not_dot])
+           || initialization_)
+        {
+            //if a turn/lanechange just ended then this could be a possible situation
+            my_exteriorPosition[FRONT_BUMPER][not_dot] = my_currentPosition[not_dot];
+            my_exteriorPosition[BACK_BUMPER][not_dot] = my_currentPosition[not_dot];
+
+            if(positive_dot)
+            {
+                if(dot) //headed south
+                {
+                    my_exteriorPosition[FRONT_LEFT][not_dot] = my_currentPosition[not_dot] + (0.5 * vehicle_params.vehicle_width); 
+                    my_exteriorPosition[BACK_LEFT][not_dot] = my_currentPosition[not_dot] + (0.5 * vehicle_params.vehicle_width);
+
+                    my_exteriorPosition[FRONT_RIGHT][not_dot] = my_currentPosition[not_dot] - (0.5 * vehicle_params.vehicle_width);
+                    my_exteriorPosition[BACK_RIGHT][not_dot] = my_currentPosition[not_dot] - (0.5 * vehicle_params.vehicle_width);
+                }
+                else //headed east
+                {
+                    my_exteriorPosition[FRONT_LEFT][not_dot] = my_currentPosition[not_dot] - (0.5 * vehicle_params.vehicle_width); 
+                    my_exteriorPosition[BACK_LEFT][not_dot] = my_currentPosition[not_dot] - (0.5 * vehicle_params.vehicle_width);
+
+                    my_exteriorPosition[FRONT_RIGHT][not_dot] = my_currentPosition[not_dot] + (0.5 * vehicle_params.vehicle_width);
+                    my_exteriorPosition[BACK_RIGHT][not_dot] = my_currentPosition[not_dot] + (0.5 * vehicle_params.vehicle_width);
+                }
+            }
+            else
+            {
+                if(dot) //headed north
+                {
+                    my_exteriorPosition[FRONT_LEFT][not_dot] = my_currentPosition[not_dot] - (0.5 * vehicle_params.vehicle_width); 
+                    my_exteriorPosition[BACK_LEFT][not_dot] = my_currentPosition[not_dot] - (0.5 * vehicle_params.vehicle_width);
+
+                    my_exteriorPosition[FRONT_RIGHT][not_dot] = my_currentPosition[not_dot] + (0.5 * vehicle_params.vehicle_width);
+                    my_exteriorPosition[BACK_RIGHT][not_dot] = my_currentPosition[not_dot] + (0.5 * vehicle_params.vehicle_width);
+                }
+                else //headed west
+                {
+                    my_exteriorPosition[FRONT_LEFT][not_dot] = my_currentPosition[not_dot] + (0.5 * vehicle_params.vehicle_width); 
+                    my_exteriorPosition[BACK_LEFT][not_dot] = my_currentPosition[not_dot] + (0.5 * vehicle_params.vehicle_width);
+
+                    my_exteriorPosition[FRONT_RIGHT][not_dot] = my_currentPosition[not_dot] - (0.5 * vehicle_params.vehicle_width);
+                    my_exteriorPosition[BACK_RIGHT][not_dot] = my_currentPosition[not_dot] - (0.5 * vehicle_params.vehicle_width);
+                }
+            }
+        }
+
+        my_exteriorPosition[FRONT_LEFT][dot] = my_exteriorPosition[FRONT_BUMPER][dot];
+        my_exteriorPosition[FRONT_RIGHT][dot] = my_exteriorPosition[FRONT_BUMPER][dot];
+
+        my_exteriorPosition[BACK_LEFT][dot] = my_exteriorPosition[BACK_BUMPER][dot];
+        my_exteriorPosition[BACK_RIGHT][dot] = my_exteriorPosition[BACK_BUMPER][dot];
+    }
+}
+
 //Printing funtions, no need for explanation
 //They print things
 void Vehicle::printStartingInformation()
@@ -433,7 +627,18 @@ void Vehicle::printStartingInformation()
 void Vehicle::printStep()
 {
     info << (int)my_state << "\t" << my_currentPosition[x] << "\t" << my_currentPosition[y] << "\t";
-    info << "\t" << my_currentVelocity[x] << "\t" << my_currentVelocity[y] << std::endl;
+    if(vehicle_params.print_velocieties)
+    {
+        info << "\t" << my_currentVelocity[x] << "\t" << my_currentVelocity[y] << "\t";
+    }
+    if(vehicle_params.print_exterior_coordinates)
+    {
+        for(uint8 i = 0; i < TOTAL_POINTS; i++)
+        {
+            info << "\t" << my_exteriorPosition[i][x] << "\t" << my_exteriorPosition[i][y] << "\t";
+        }
+    }
+    info << std::endl;
 }
 
 void Vehicle::printFinalInformation()
@@ -514,6 +719,11 @@ float Vehicle::timeInIntersection()
 float Vehicle::totalTime()
 {
     return my_totalTime;
+}
+
+float* Vehicle::exteriorPosition(vehiclePoints vehicle_point_)
+{
+    return my_exteriorPosition[vehicle_point_];
 }
 
 bool Vehicle::isCompleted()
