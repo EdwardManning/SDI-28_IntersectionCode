@@ -45,6 +45,7 @@ const bool EXIT_LANE = 1;
 const std::string LANE_STR = "lane";
 const std::string EXIT_STR = "exit";
 const std::string ROAD_STR = "road";
+const std::string DRIVER_STR = "driver";
 
 //all directions (mostly for roads)
 enum direction

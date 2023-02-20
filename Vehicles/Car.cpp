@@ -19,9 +19,9 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
 {
     my_number = number_;
     my_vehicleType = CAR;
-    my_driverType = driver_type_;
+    my_driver = new HumanDriver(driver_type_);
     my_name = VEHICLE_TYPE_STR[my_vehicleType] + " " + std::to_string(my_number);
-    my_maxSpeed = lane_->speedLimit() * DRIVER_TYPE_MODIFIER[my_driverType];
+    my_maxSpeed = lane_->speedLimit() * my_driver->modifier();
     my_timeInIntersection = 0;
     my_totalTime = 0;
     my_stopTime = 0;
