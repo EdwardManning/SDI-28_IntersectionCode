@@ -55,7 +55,7 @@ Simulation::~Simulation()
 */
 void Simulation::run()
 {
-    debugIntersection();
+    //debugIntersection();
     while(!completionCheck())
     {
         if (car->vehicleType() == CAR)
@@ -67,6 +67,10 @@ void Simulation::run()
             //will eventually be used with vehiclePerformActions
             //for autonomous vehicles
             SWERRINT(car->vehicleType());
+        }
+        if(my_intersection.trafficLight()->makeStep() && simulation_params.print_simulation_events)
+        {
+            printTrafficLightStateChange(my_intersection.trafficLight());
         }
         elapsed_time += simulation_params.time_step;
     }
@@ -558,4 +562,9 @@ void Simulation::printResults()
 void Simulation::printLaneChange(Vehicle* vehicle_, uint8 new_lane_)
 {
     events << elapsed_time << " Vehicle " << vehicle_->number() << ": changed from lane " << (int)vehicle_->laneNumber() << " to " << (int)new_lane_ << std::endl;
+}
+
+void Simulation::printTrafficLightStateChange(TrafficLight* traffic_light_)
+{
+    events << elapsed_time << " Traffic light now in state: " << LIGHT_EVENT_STATE_STR[traffic_light_->currentEvent()] << " (" << traffic_light_->state() << ")" << std::endl;
 }

@@ -38,6 +38,7 @@ private:
     void printResults();
     void printCompletion(Vehicle* vehicle_);
     void printLaneChange(Vehicle* vehicle_, uint8 new_lane_);
+    void printTrafficLightStateChange(TrafficLight* traffic_light_);
     
     double elapsed_time; //Total time the simulation has been running
     Intersection my_intersection; //Holds the intersection information

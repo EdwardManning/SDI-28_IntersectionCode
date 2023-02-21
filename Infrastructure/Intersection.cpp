@@ -22,6 +22,8 @@ Intersection::Intersection()
     my_roads[SOUTH] = new SouthRoad();
     my_roads[EAST] = new EastRoad();
     my_roads[WEST] = new WestRoad();
+
+    my_trafficLight = new TrafficLight(false);
 }
 
 /*
@@ -72,5 +74,10 @@ Road* Intersection::getRoad(direction road_direction_)
         default: SWERRINT(road_direction_); //if the direction isn't north, south, east, or west (is not allowed)
     }
     return my_roads[NORTH]; //only happens with swerr
+}
+
+TrafficLight* Intersection::trafficLight()
+{
+    return my_trafficLight;
 }
 
