@@ -39,6 +39,9 @@ const bool x = 0;
 const bool y = 1;
 const uint8 TOTAL_DIMENSIONS = 2; //there are only 2 dimensions, x and y
 
+const bool NS = 0;
+const bool EW = 1;
+
 //lane types
 const bool ENTRY_LANE = 0;
 const bool EXIT_LANE = 1;
@@ -131,6 +134,99 @@ const float DRIVER_TYPE_MODIFIER[]
     0.95,
     1,
     1.05,
+};
+
+enum lightState
+{
+    NORTH_GREEN_LIGHT = 1,
+    NORTH_YELLOW_LIGHT = 2,
+    NORTH_ADVANCED_GREEN_LIGHT = 4,
+    NORTH_ADVANCED_YELLOW_LIGHT = 8,
+    SOUTH_GREEN_LIGHT = 16,
+    SOUTH_YELLOW_LIGHT = 32,
+    SOUTH_ADVANCED_GREEN_LIGHT = 64,
+    SOUTH_ADVANCED_YELLOW_LIGHT = 128,
+    EAST_GREEN_LIGHT = 256,
+    EAST_YELLOW_LIGHT = 512,
+    EAST_ADVANCED_GREEN_LIGHT = 1024,
+    EAST_ADVANCED_YELLOW_LIGHT = 2048,
+    WEST_GREEN_LIGHT = 4096,
+    WEST_YELLOW_LIGHT = 8192,
+    WEST_ADVANCED_GREEN_LIGHT = 16384,
+    WEST_ADVANCED_YELLOW_LIGHT = 32768,
+};
+
+enum lightEventState
+{
+    NORTH_ADVANCED_GREEN,      //0
+    SOUTH_ADVANCED_GREEN,      //1
+    EAST_ADVANCED_GREEN,       //2
+    WEST_ADVANCED_GREEN,       //3
+    NORTH_ADVANCED_YELLOW,     //4
+    SOUTH_ADVANCED_YELLOW,     //5
+    EAST_ADVANCED_YELLOW,      //6
+    WEST_ADVANCED_YELLOW,      //7
+    NS_ADVANCED_GREEN,         //8
+    EW_ADVANCED_GREEN,         //9
+    NS_ADVANCED_YELLOW,        //10
+    EW_ADVANCED_YELLOW,        //11
+    NS_ADVANCED_RED,           //12
+    EW_ADVANCED_RED,           //13
+    NS_GREEN,                  //14
+    EW_GREEN,                  //15
+    NS_YELLOW,                 //16
+    EW_YELLOW,                 //17
+    NS_MUTUAL_RED,             //18 preceeds ns green or ns advanced greens
+    EW_MUTUAL_RED,             //19 preceeds ns green or ns advanced greens
+    //dedicated greens are used after solo advanced greens to prevent collisions
+    NORTH_GREEN,               //20 
+    SOUTH_GREEN,               //21
+    EAST_GREEN,                //22
+    WEST_GREEN,                //23
+    TOTAL_LIGHT_EVENTS,        //24
+};
+
+const std::string LIGHT_EVENT_STATE_STR[]
+{
+    "north advanced green",
+    "south advanced green",
+    "east advanced green",
+    "west advanced green",
+    "north advanced yellow",
+    "south advanced yellow",
+    "east advanced yellow",
+    "west advanced yellow",
+    "north/south advanced green",
+    "east/west advanced green",
+    "north/south advanced yellow",
+    "east/west advanced yellow",
+    "north/south advanced red",
+    "east/west advanced red",
+    "north/south green",
+    "east/west green",
+    "north/south yellow",
+    "east/west yellow",
+    "north/south based mutual red",
+    "east/west based mutual red",
+    "north green",
+    "south green",
+    "east green",
+    "west green",
+    "total light events",
+};
+
+enum lightColour
+{
+    GREEN,   //0
+    YELLOW,  //1
+    RED,     //2
+};
+
+const std::string LIGHT_COLOUR_STR[]
+{
+    "green",
+    "yellow",
+    "red",
 };
 
 //vehicle coordinate points correspond to

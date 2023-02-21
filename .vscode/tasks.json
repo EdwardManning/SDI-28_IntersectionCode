@@ -11,6 +11,7 @@
                 "${workspaceFolder}/Infrastructure/*.cpp",
                 "${workspaceFolder}/Common/*.cpp",
                 "${workspaceFolder}/Vehicles/*.cpp",
+                "${workspaceFolder}/Infrastructure/LightEvents/*.cpp",
                 "-o",
                 "${fileDirname}\\source.exe"
             ],

@@ -5,6 +5,7 @@
 #include "./SouthRoad.h"
 #include "./EastRoad.h"
 #include "./WestRoad.h"
+#include "./TrafficLight.h"
 
 /*
 *   Name: Intersection
@@ -22,7 +23,9 @@ public:
     Intersection();
     Road* getRoad(uint8 road_number_);
     Road* getRoad(direction road_direction_);
+    TrafficLight* trafficLight();
 private:
     Road* my_roads[TOTAL_DIRECTIONS]; //array of roads
-    //add vehicles list and traffic light
+    TrafficLight* my_trafficLight;
+    //add vehicles list
 };
