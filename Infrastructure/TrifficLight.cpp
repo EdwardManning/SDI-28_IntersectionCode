@@ -21,6 +21,152 @@ bool TrafficLight::makeStep()
     return false;
 }
 
+lightColour TrafficLight::currentLightColour(direction direction_)
+{
+    switch(direction_)
+    {
+        case(NORTH):
+        {
+            if (my_currentState & NORTH_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_currentState & NORTH_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        case(SOUTH):
+        {
+            if (my_currentState & SOUTH_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_currentState & SOUTH_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        case(EAST):
+        {
+            if (my_currentState & EAST_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_currentState & EAST_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        case(WEST):
+        {
+            if (my_currentState & WEST_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_currentState & WEST_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        default: SWERRINT(direction_);
+    }
+    return RED;
+}
+
+lightColour TrafficLight::advancedLightColour(direction direction_)
+{
+    switch(direction_)
+    {
+        case(NORTH):
+        {
+            if (my_currentState & NORTH_ADVANCED_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_currentState & NORTH_ADVANCED_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        case(SOUTH):
+        {
+            if (my_currentState & SOUTH_ADVANCED_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_currentState & SOUTH_ADVANCED_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        case(EAST):
+        {
+            if (my_currentState & EAST_ADVANCED_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_currentState & EAST_ADVANCED_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        case(WEST):
+        {
+            if (my_currentState & WEST_ADVANCED_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_currentState & WEST_ADVANCED_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        default: SWERRINT(direction_);
+    }
+    return RED;
+}
+
 void TrafficLight::cycle()
 {
     //this will eventually be used with the traffic light to 

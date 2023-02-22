@@ -1,5 +1,6 @@
 # pragma once
 #include "../Common/CommonDefs.h"
+#include <random>
 
 class Driver
 {
@@ -12,15 +13,20 @@ public:
     std::string name();
     DriverType driverType();
     float modifier();
-    float maximumAcceleration();
     float reactionTime();
+    float comfortableAcceleration();
+    float comfortableDeceleration();
 protected:
+    float generateComfortableDeceleration();
+    float generateComfortableAcceleration();
+    float generateReactionTime();
     std::string my_name;
     DriverType my_driverType;
     float my_modifier;
-    float my_maximumAcceleration;
     float my_reactionTime;
     float my_minFollowingDistance;
     float my_minStopDistance;
+    float my_comfortableDeceleration;
+    float my_comfortableAcceleration;
 private:
 };
