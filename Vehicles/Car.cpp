@@ -26,6 +26,8 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
     my_totalTime = 0;
     my_stopTime = 0;
     my_completionStatus = false;
+    my_maxDeceleration = 7; //m/s (I looked it up and apparenly cars can usually decelerate this fast)
+    my_accelerationMagnitude = 0;
 
     my_stoplineCenter = -1; //for swerr purposes
 
@@ -34,6 +36,9 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
 
     my_currentVelocity[x] = my_maxSpeed * lane_->unitVector()[x];
     my_currentVelocity[y] = my_maxSpeed * lane_->unitVector()[y];
+
+    my_unitVector[x] = lane_->unitVector()[x];
+    my_unitVector[y] = lane_->unitVector()[y];
 
     my_currentAcceleration[x] = 0;
     my_currentAcceleration[y] = 0;
@@ -47,10 +52,12 @@ Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
     if(my_direction == NORTH || my_direction ==SOUTH)
     {
         my_stopline = lane_->endingPosition()[y];
+        my_dot = y;
     }
     else
     {
         my_stopline = lane_->endingPosition()[x];
+        my_dot = x;
     }
     
     correctLane(lane_, true);

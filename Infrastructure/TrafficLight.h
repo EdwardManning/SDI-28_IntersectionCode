@@ -7,6 +7,8 @@ class TrafficLight
 public:
     TrafficLight(bool smart_ = false);
     bool makeStep();
+    lightColour currentLightColour(direction direction_);
+    lightColour advancedLightColour(direction direction_);
     void changeState(lightState state_, bool add_ = ADD);
     void changeEvent(lightEventState event_);
     void changeEvent(lightEventState event_, float duration_);

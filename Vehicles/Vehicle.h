@@ -25,13 +25,15 @@ public:
 
     //important functions
     void drive();
-    void accelerate();
+    bool accelerate();
+    void accelerate(float target_speed_);
     void changeLane(path direction_);
     void stopLaneChange();
     bool correctLane(Lane* lane_, bool initialization_ = false);
     void turn();
     void stopTurn(Lane* lane_);
     bool collisionCheck(Vehicle* vehicle_);
+    bool lightChange(lightColour colour_);
 
     //less important functions
     void changeState(state state_, const bool adding_);
@@ -53,8 +55,12 @@ public:
     float totalTime();
     float* exteriorPosition(vehiclePoints vehicle_point_);
     bool isCompleted();
+    float currentAccelerationMagnitude();
+    bool yellowLightAnalysis();
+    bool redLightAnalysis();
 protected:
     void draw(bool initialization_ = false);
+    void updateUnitVector();
 
     //printing functions
     void printStartingInformation();
@@ -82,7 +88,10 @@ protected:
     bool my_completionStatus; //true if completed intersection, false otherwise
     Driver* my_driver; //the driver of the vehicle
     float my_exteriorPosition[TOTAL_POINTS][TOTAL_DIMENSIONS]; //holds the current position of the exterior of the vehicle
-
+    float my_maxDeceleration;
+    float my_accelerationMagnitude;
+    bool my_dot;
+    int8 my_unitVector[2];
     std::ofstream info;
 private:
 };

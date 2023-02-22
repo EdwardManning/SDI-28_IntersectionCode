@@ -43,7 +43,7 @@ void Vehicle::drive()
     }
     else
     {
-        SWERRINT(my_state);
+        my_stopTime += simulation_params.time_step;
     }
     draw();
 }
@@ -58,21 +58,169 @@ void Vehicle::drive()
 *   Output: N/A
 *
 */
-void Vehicle::accelerate()
+bool Vehicle::accelerate()
 {
-    if(my_state & ACCELERATING) //if accelerating
-    {
-        my_currentVelocity[x] += my_currentAcceleration[x] * simulation_params.time_step;
-        my_currentVelocity[y] += my_currentAcceleration[y] * simulation_params.time_step;
-    } 
-    else if (my_state & DECELERATING) //if decelerating
-    {
-        my_currentVelocity[x] -= my_currentAcceleration[x] * simulation_params.time_step;
-        my_currentVelocity[y] -= my_currentAcceleration[y] * simulation_params.time_step;
-    }
-    else //if neither accelerating or decelerating
+    bool accelerationComplete = false;
+
+    if((my_state & ACCELERATING) && (my_state & DECELERATING))
     {
         SWERRINT(my_state);
+        return true;
+    }
+
+    bool dot = my_dot;
+    bool not_dot = dot ? x : y; //if dot is y then x, otherwise y
+    
+    float theta;
+
+    if (my_currentVelocity[dot] != 0 || my_currentVelocity[not_dot] != 0)
+    {
+        updateUnitVector();
+    }
+
+    if (my_currentVelocity[dot] == 0 || my_currentVelocity[not_dot] == 0)
+    {
+        theta = 0;
+    }
+    else
+    {
+        theta = atan(my_currentVelocity[not_dot] / my_currentVelocity[dot]);
+    }
+    float cos_theta = cos(theta);
+    float sin_theta = sin(theta);
+
+    cos_theta *= cos_theta < 0 ? -1 : 1;
+    sin_theta *= sin_theta < 0 ? -1 : 1;
+
+    my_currentAcceleration[dot] = my_accelerationMagnitude * cos_theta;
+    my_currentAcceleration[not_dot] = my_accelerationMagnitude * sin_theta;
+    
+    bool dot_positive;
+    bool not_dot_positive;
+
+    if((my_currentVelocity[dot] == 0) && (my_currentVelocity[not_dot] == 0))
+    {
+        dot_positive = my_unitVector[dot] >= 0;
+        not_dot_positive =my_unitVector[not_dot] >= 0;
+    }
+    else
+    {
+        dot_positive = isPositive<float>(my_currentVelocity[dot]);
+        not_dot_positive = isPositive<float> (my_currentVelocity[not_dot]);
+    }
+
+    if (my_state & ACCELERATING)
+    {
+        if (dot_positive)
+        {
+            my_currentVelocity[dot] += my_currentAcceleration[dot] * simulation_params.time_step;
+        }
+        else
+        {
+            my_currentVelocity[dot] -= my_currentAcceleration[dot] * simulation_params.time_step;
+        }
+        if (not_dot_positive)
+        {
+            my_currentVelocity[not_dot] += my_currentAcceleration[not_dot] * simulation_params.time_step;
+        }
+        else
+        {
+            my_currentVelocity[not_dot] -= my_currentAcceleration[not_dot] * simulation_params.time_step;
+        }
+        float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+        if(velocity_magnitude >= my_maxSpeed)
+        {   
+            if (dot_positive)
+            {
+                my_currentVelocity[dot] =  my_maxSpeed * cos_theta;
+            }
+            else
+            {
+                my_currentVelocity[dot] = -1 * my_maxSpeed * cos_theta;
+            }
+            if (not_dot_positive)
+            {
+                my_currentVelocity[not_dot] =  my_maxSpeed * sin_theta;
+            }
+            else
+            {
+                my_currentVelocity[not_dot] = -1 * my_maxSpeed * sin_theta;
+            }
+            my_accelerationMagnitude = 0;
+            my_currentAcceleration[dot] = 0;
+            my_currentAcceleration[not_dot] = 0;
+            accelerationComplete = true;
+        }
+    } 
+    else if (my_state & DECELERATING)
+    {
+        if (dot_positive)
+        {
+            my_currentVelocity[dot] -= my_currentAcceleration[dot] * simulation_params.time_step;
+        }
+        else
+        {
+            my_currentVelocity[dot] += my_currentAcceleration[dot] * simulation_params.time_step;
+        }
+        if (not_dot_positive)
+        {
+            my_currentVelocity[not_dot] -= my_currentAcceleration[not_dot] * simulation_params.time_step;
+        }
+        else
+        {
+            my_currentVelocity[not_dot] += my_currentAcceleration[not_dot] * simulation_params.time_step;
+        }
+        float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+        if((velocity_magnitude - my_accelerationMagnitude * simulation_params.time_step) <= 0)
+        {
+            my_currentVelocity[dot] = 0;
+            my_currentVelocity[not_dot] = 0;
+            my_accelerationMagnitude = 0;
+            my_currentAcceleration[dot] = 0;
+            my_currentAcceleration[not_dot] = 0;
+            accelerationComplete = true;
+        }
+        
+    }
+    else
+    {
+        SWERRINT(my_state);
+        return true;
+    }
+    return accelerationComplete;
+}
+
+void Vehicle::accelerate(float target_speed_)
+{
+    bool dot = maxComponent(my_currentVelocity[x], my_currentVelocity[y]);
+    float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+    if(target_speed_ == 0)
+    {
+        float distance_remaining = abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][dot]);
+        //this may need to be altered so that aggressive drivers vs standard drivers act differently
+        my_accelerationMagnitude = requiredAcceleration<float>(my_currentVelocity[dot], distance_remaining); 
+        if(my_accelerationMagnitude < 0)
+        {
+            my_accelerationMagnitude *= -1;
+        }
+    }
+    else if (target_speed_ == my_maxSpeed)
+    {
+        my_accelerationMagnitude = my_driver->comfortableAcceleration();
+    }
+    else
+    {
+        //these should not be used by non self driving vehicles
+        if(target_speed_ > velocity_magnitude)
+        {
+            SWERRFLOAT(target_speed_);
+            //my_accelerationMagnitude = my_driver->comfortableAcceleration();
+        }
+        else
+        {
+            SWERRFLOAT(target_speed_);
+            //my_accelerationMagnitude = my_driver->comfortableDeceleration();
+        }
     }
 }
 
@@ -325,7 +473,7 @@ void Vehicle::turn()
 /*
 *   Name: stopTurn
 *
-*   Description: Sets the unit vector to that of the exit lane.
+*   Description: Sets the unit vector and max speed to those of the exit lane.
 *
 *   Input: lane_ -> The exit lane in question.
 *
@@ -336,8 +484,13 @@ void Vehicle::stopTurn(Lane* lane_)
 {
     float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
 
+    my_maxSpeed = lane_->speedLimit();
+    my_dot = maxComponent<int8>(lane_->unitVector()[x], lane_->unitVector()[y]);
+
     my_currentVelocity[x] = velocity_magnitude * lane_->unitVector()[x];
     my_currentVelocity[y] = velocity_magnitude * lane_->unitVector()[y];
+    
+    updateUnitVector();
 }
 
 bool Vehicle::collisionCheck(Vehicle* vehicle_)
@@ -365,6 +518,44 @@ bool Vehicle::collisionCheck(Vehicle* vehicle_)
         }
     }
     return false;
+}
+
+bool Vehicle::lightChange(lightColour colour_)
+{
+    switch(colour_)
+    {
+        case(GREEN):
+        {
+            return false;
+        }
+            break;
+        case(YELLOW):
+        {
+            return yellowLightAnalysis();
+        }
+            break;
+        case(RED):
+        {
+            return redLightAnalysis();
+        }
+            break;
+        default: SWERRINT(colour_);
+    }
+    return false;
+}
+
+bool Vehicle::yellowLightAnalysis()
+{
+    //only gets called before intersection
+    //true causes slow down, false keeps going
+    return abs(stoppingDistance<float>(my_currentVelocity[my_dot], my_driver->comfortableDeceleration())) < abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][my_dot]);
+}
+
+bool Vehicle::redLightAnalysis()
+{
+    //only gets called before intersection
+    //true causes slow down, false keeps going
+    return abs(stoppingDistance<float>(my_currentVelocity[my_dot], my_maxDeceleration)) < abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][my_dot]);
 }
 
 /*
@@ -607,6 +798,35 @@ void Vehicle::draw(bool initialization_)
     }
 }
 
+void Vehicle::updateUnitVector()
+{
+    if (my_currentVelocity[x] > 0)
+    {
+        my_unitVector[x] = 1;
+    }
+    else if (my_currentVelocity[x] < 0)
+    {
+        my_unitVector[x] = -1;
+    }
+    else
+    {
+        my_unitVector[x] = 0;
+    }
+
+    if (my_currentVelocity[y] > 0)
+    {
+        my_unitVector[y] = 1;
+    }
+    else if (my_currentVelocity[y] < 0)
+    {
+        my_unitVector[y] = -1;
+    }
+    else
+    {
+        my_unitVector[y] = 0;
+    }
+}
+
 //Printing funtions, no need for explanation
 //They print things
 void Vehicle::printStartingInformation()
@@ -729,4 +949,9 @@ float* Vehicle::exteriorPosition(vehiclePoints vehicle_point_)
 bool Vehicle::isCompleted()
 {
     return my_completionStatus;
+}
+
+float Vehicle::currentAccelerationMagnitude()
+{
+    return my_accelerationMagnitude;
 }

@@ -29,6 +29,7 @@ enum state
     IN_INTERSECTION = 64,
     THROUGH_INTERSECTION = 128,
 };
+const bool STOP = 0;
 
 //for state changes
 const bool REMOVE = 0;
@@ -113,7 +114,7 @@ const std::string VEHICLE_TYPE_STR[]
 enum DriverType
 {
     NULL_DRIVER,   //0
-    SLOW,          //1
+    CALM,          //1
     NORMAL,        //2
     AGGRESSIVE,    //3
 };
@@ -121,7 +122,7 @@ enum DriverType
 const std::string DRIVER_TYPE_STR[]
 {
     "no driver",
-    "slow",
+    "calm",
     "normal",
     "aggressive",
 };
@@ -314,6 +315,11 @@ constexpr float FROM_MAGNITUDE(float h_value, float x_value)
     return sqrt( (pow(h_value, 2)) - (pow(x_value, 2)) );
 }
 
+constexpr bool XOR(bool a, bool b)
+{
+    return !(a) != !(b); 
+}
+
 template <typename type>
 type max(type a, type b)
 {
@@ -329,18 +335,30 @@ type min(type a, type b)
 template <typename type>
 bool maxComponent(type x_component, type y_component)
 {
-    return (abs(x_component) > abs(y_component)) ? x : y;
+    return (abs(x_component) >= abs(y_component)) ? x : y;
 }
 
 template <typename type>
 bool minComponent(type x_component, type y_component)
 {
-    return (abs(x_component) > abs(y_component)) ? y : x;
+    return (abs(x_component) >= abs(y_component)) ? y : x;
 }
 
 template <typename type>
 bool isPositive(type value)
 {
     return value >= 0;
+}
+
+template <typename type>
+float stoppingDistance(type current_velocity_, type acceleration)
+{
+    return (-1 * pow(current_velocity_, 2)) / (2 * acceleration);
+}
+
+template <typename type>
+float requiredAcceleration(type current_velocity_, type distance)
+{
+    return (-1 * pow(current_velocity_, 2)) / (2 * distance);
 }
 #endif

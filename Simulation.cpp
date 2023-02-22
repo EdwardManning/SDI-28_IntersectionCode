@@ -20,7 +20,8 @@ Simulation::Simulation()
         events << "No Event Printing" << std::endl;
     }
 
-    car = new Car(0, STRAIGHT, my_intersection.getRoad(WEST)->getLane(3), NORMAL);
+    car = new Car(0, LEFT, my_intersection.getRoad(SOUTH)->getLane(4), NORMAL);
+    light_change_occured = false;
     elapsed_time = 0;
     run();
 }
@@ -56,7 +57,7 @@ Simulation::~Simulation()
 void Simulation::run()
 {
     //debugIntersection();
-    while(!completionCheck())
+    while(!completionCheck() && elapsed_time < 300)
     {
         if (car->vehicleType() == CAR)
         {
@@ -68,9 +69,17 @@ void Simulation::run()
             //for autonomous vehicles
             SWERRINT(car->vehicleType());
         }
-        if(my_intersection.trafficLight()->makeStep() && simulation_params.print_simulation_events)
+        if(my_intersection.trafficLight()->makeStep())
         {
-            printTrafficLightStateChange(my_intersection.trafficLight());
+            light_change_occured = true;
+            if(simulation_params.print_simulation_events)
+            {
+                printTrafficLightStateChange(my_intersection.trafficLight());
+            }
+        }
+        else
+        {
+            light_change_occured = false;
         }
         elapsed_time += simulation_params.time_step;
     }
@@ -137,6 +146,138 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         }
     }
     
+    if(!(vehicle_->currentState() & THROUGH_INTERSECTION) &&
+       !(vehicle_->currentState() & IN_INTERSECTION))
+    {
+        if (light_change_occured)
+        {
+            if(vehicle_->lightChange(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection())))
+            {
+                //driving check is necessary because it could be tripped if stopped
+                if(!(vehicle_->currentState() & DECELERATING) &&
+                   (vehicle_->currentState() & DRIVING))
+                {      
+                    vehicle_->accelerate(STOP);
+                    if (vehicle_->currentAccelerationMagnitude() > 0)
+                    {
+                        changeState(vehicle_, DECELERATING, ADD);
+                        if (vehicle_->currentState() & ACCELERATING)
+                        {
+                            changeState(vehicle_, ACCELERATING, REMOVE);
+                        }
+                    }
+                    else
+                    {
+                        SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
+                    }
+                }
+            }
+            else
+            {
+                if (MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) < vehicle_->maxSpeed())
+                {
+                    if (!(vehicle_->currentState() & ACCELERATING))
+                    {
+                        vehicle_->accelerate(vehicle_->maxSpeed());
+                        if (vehicle_->currentAccelerationMagnitude() > 0)
+                        {
+                            changeState(vehicle_, ACCELERATING, ADD);
+                            if (!(vehicle_->currentState() & DRIVING))
+                            {
+                                changeState(vehicle_, DRIVING, ADD);
+                            }
+                            if (vehicle_->currentState() & DECELERATING)
+                            {
+                                changeState(vehicle_, DECELERATING, REMOVE);
+                            }
+                        }
+                        else
+                        {
+                            SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
+                        }
+                    }
+                }
+            }
+        }
+        else //it could already be red or yellow
+        {
+            if(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == YELLOW)
+            {
+                if (vehicle_->yellowLightAnalysis())
+                {
+                    //driving check is necessary because it could be tripped if stopped
+                    if(!(vehicle_->currentState() & DECELERATING) && 
+                       (vehicle_->currentState() & DRIVING))
+                    {      
+                        vehicle_->accelerate(STOP);
+                        if (vehicle_->currentAccelerationMagnitude() > 0)
+                        {
+                            changeState(vehicle_, DECELERATING, ADD);
+                            if (vehicle_->currentState() & ACCELERATING)
+                            {
+                                changeState(vehicle_, ACCELERATING, REMOVE);
+                            }
+                        }
+                        else
+                        {
+                        SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
+                        }
+                    }
+                }
+            }
+            else if(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == RED)
+            {
+                if (vehicle_->redLightAnalysis())
+                {
+                    //driving check is necessary because it could be tripped if stopped
+                    if(!(vehicle_->currentState() & DECELERATING) &&
+                       (vehicle_->currentState() & DRIVING))
+                    {      
+                        vehicle_->accelerate(STOP);
+                        if (vehicle_->currentAccelerationMagnitude() > 0)
+                        {
+                            changeState(vehicle_, DECELERATING, ADD);
+                            if (vehicle_->currentState() & ACCELERATING)
+                            {
+                                changeState(vehicle_, ACCELERATING, REMOVE);
+                            }
+                        }
+                        else
+                        {
+                            SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else //through intersection, no red or yellow lights
+    {
+        if (MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) < vehicle_->maxSpeed())
+        {
+            if (!(vehicle_->currentState() & ACCELERATING))
+            {
+                vehicle_->accelerate(vehicle_->maxSpeed());
+                if (vehicle_->currentAccelerationMagnitude() > 0)
+                {
+                    changeState(vehicle_, ACCELERATING, ADD);
+                    if (!(vehicle_->currentState() & DRIVING))
+                    {
+                        changeState(vehicle_, DRIVING, ADD);
+                    }
+                    if (vehicle_->currentState() & DECELERATING)
+                    {
+                        changeState(vehicle_, DECELERATING, REMOVE);
+                    }
+                }
+                else
+                {
+                    SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
+                }
+            }
+        }
+    }
+    
     if(!(vehicle_->currentState() & CORRECT_LANE))
     {
         path lane_change_direction = changeLaneDirection(vehicle_);
@@ -163,6 +304,25 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         {
             changeState(vehicle_, CHANGING_LANES, ADD);
             vehicle_->changeLane(lane_change_direction);
+        }
+    }
+    if ((vehicle_->currentState() & ACCELERATING) | (vehicle_->currentState() & DECELERATING))
+    {
+        if(vehicle_->accelerate())
+        {
+            if (vehicle_->currentState() & DECELERATING)
+            {
+                changeState(vehicle_, DECELERATING, REMOVE);
+                changeState(vehicle_, DRIVING, REMOVE);
+            }
+            else if (vehicle_->currentState() & ACCELERATING)
+            {
+                changeState(vehicle_, ACCELERATING, REMOVE);
+            }
+            else
+            {
+                SWERRINT(vehicle_->currentState());
+            }
         }
     }
     vehicle_->drive();
