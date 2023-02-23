@@ -21,7 +21,7 @@ class Vehicle
 {
 public:
     Vehicle();
-    Vehicle(uint16 number_, path path_, Lane* lane_, DriverType driver_type_);
+    Vehicle(uint32 number_, path path_, Lane* lane_, DriverType driver_type_);
 
     //important functions
     void drive();
@@ -42,7 +42,7 @@ public:
     float* currentPosition();
     float* currentVelocity();
     float* currentAcceleration();
-    uint16 number();
+    uint32 number();
     std::string name();
     VehicleType vehicleType();
     path vehiclePath();
@@ -70,7 +70,7 @@ protected:
     float my_currentPosition[2]; //the current position of the vehicle
     float my_currentVelocity[2]; //the current velocity of the vehicle
     float my_currentAcceleration[2]; //the current acceleration of the vehicle
-    uint16 my_number; //the vehicle number
+    uint32 my_number; //the vehicle number
     std::string my_name; //the name of the vehicle
     VehicleType my_vehicleType; //the type of vehicle
     path my_path; //the path the vehicle is taking

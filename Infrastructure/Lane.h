@@ -16,6 +16,15 @@ class Lane
 public:
     Lane();
     Lane(uint8 number_, direction direction_, path path_);
+
+    uint32 vehicleAtIndex(uint32 index_);
+    uint32 indexOfVehicle(uint32 vehicle_number_);
+    bool inLane(uint32 vehicle_number_);
+    void addToLane(uint32 vehicle_number_);
+    void addToLane(uint32 vehicle_number_, uint32 index_);
+    void removeFromLane();
+    bool removeFromLane(uint32 vehicle_number_);
+    uint32 numberOfVehicles();
     float* startingPosition();
     float* endingPosition();
     float centerLine();
@@ -35,7 +44,6 @@ protected:
     //exit lanes start at the intersection and end at the edge of the frame
     float my_startingPosition[2]; //the coordinates where the lane begins
     float my_endingPosition[2]; //the coordinates where the lane ends
-    
     float my_centerLine; //the center coordinate of the lane 
     uint8 my_width; //the width of the lane
     uint8 my_length; //the length of the lane
@@ -46,5 +54,7 @@ protected:
     bool my_laneType; //the type of the lane
     uint8 my_speedLimit; //the speed limit of the lane
     int8 my_unitVector[2]; //the unit vector of the lane, initializes direction of travel
+
+    std::vector<uint32> my_vehicles; //holds a list of vehicle numbers that are in the lane
 private:
 };

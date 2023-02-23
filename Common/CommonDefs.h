@@ -3,6 +3,9 @@
 #define COMMON_DEFS
 #include <string>
 #include <cmath>
+#include <vector>
+#include <stdexcept>
+#include <exception>
 
 #include "./CommonTypes.h"
 #include "./IntersectionParameters.h"

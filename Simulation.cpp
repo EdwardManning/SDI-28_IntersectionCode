@@ -19,8 +19,11 @@ Simulation::Simulation()
     {
         events << "No Event Printing" << std::endl;
     }
-
-    car = new Car(0, LEFT, my_intersection.getRoad(SOUTH)->getLane(4), NORMAL);
+    my_vehiclesMade = 0;
+    vehicle_list = new Vehicle*[simulation_params.number_of_vehicles];
+    
+    generateVehicle(my_vehiclesMade);
+    my_vehiclesMade++;
     light_change_occured = false;
     elapsed_time = 0;
     run();
@@ -56,18 +59,19 @@ Simulation::~Simulation()
 */
 void Simulation::run()
 {
+    float spawn_countdown = 4;
     //debugIntersection();
-    while(!completionCheck() && elapsed_time < 300)
+    while((!completionCheck() || (my_vehiclesMade != simulation_params.number_of_vehicles)) && elapsed_time < 300)
     {
-        if (car->vehicleType() == CAR)
+        if (vehicle_list[0]->vehicleType() == CAR)
         {
-            driverPerformActions(car);
+            driverPerformActions(vehicle_list[0]);
         }
         else
         {
             //will eventually be used with vehiclePerformActions
             //for autonomous vehicles
-            SWERRINT(car->vehicleType());
+            SWERRINT(vehicle_list[0]->vehicleType());
         }
         if(my_intersection.trafficLight()->makeStep())
         {
@@ -82,6 +86,13 @@ void Simulation::run()
             light_change_occured = false;
         }
         elapsed_time += simulation_params.time_step;
+        spawn_countdown -= simulation_params.time_step;
+        if (spawn_countdown <= 0 && my_vehiclesMade < simulation_params.number_of_vehicles)
+        {
+            spawn_countdown = 4;
+            generateVehicle(my_vehiclesMade);
+            my_vehiclesMade++;
+        }
     }
     std::cout << elapsed_time << std::endl;
 }
@@ -99,7 +110,14 @@ void Simulation::run()
 */
 bool Simulation::completionCheck()
 {
-    return vehicleCompleted(car);
+    for(uint32 i = 0; i < simulation_params.number_of_vehicles; i++)
+    {
+        if (!vehicleCompleted(vehicle_list[i]))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 /*
@@ -120,6 +138,34 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
        !(vehicle_->currentState() & THROUGH_INTERSECTION))
     {
         changeState(vehicle_, IN_INTERSECTION, ADD);
+        //if it is not already in the intersection list
+        if(!(my_intersection.inIntersection(vehicle_->number())))
+        {
+            my_intersection.addToIntersection(vehicle_->number());
+        }
+        else
+        {
+            SWERRINT(vehicle_->currentState());
+        }
+        //if it is in the lane
+        if(my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->inLane(vehicle_->number()))
+        {
+            my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->removeFromLane(vehicle_->number());
+        }
+        else
+        {
+            SWERRINT(vehicle_->currentState());
+        }
+        //if it is in the road
+        if(my_intersection.getRoad(vehicle_->vehicleDirection())->inRoad(vehicle_->number()))
+        {
+            my_intersection.getRoad(vehicle_->vehicleDirection())->removeFromRoad(vehicle_->number());
+        }
+        else
+        {
+            SWERRINT(vehicle_->currentState());
+        }
+
         if (vehicle_->vehiclePath() != STRAIGHT)
         {
             changeState(vehicle_, TURNING, ADD);
@@ -131,6 +177,15 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         if(passedExitStartLine(vehicle_))
         {
             changeState(vehicle_, IN_INTERSECTION, REMOVE);
+            //if in intersection
+            if(my_intersection.inIntersection(vehicle_->number()))
+            {
+                my_intersection.removeFromIntersection(vehicle_->number());
+            }
+            else
+            {
+                SWERRINT(vehicle_->currentState());
+            }
             setLane(vehicle_);
             changeState(vehicle_, THROUGH_INTERSECTION, ADD);
             if(vehicle_->currentState() & TURNING)
@@ -403,6 +458,10 @@ bool Simulation::passedExitStartLine(Vehicle* vehicle_)
 */
 void Simulation::setLane(Vehicle* vehicle_)
 {
+    if(my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->inLane(vehicle_->number()))
+    {
+       my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->removeFromLane(vehicle_->number()); 
+    }
     Road* road = my_intersection.getRoad(my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath()));
     switch(my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath()))
     {
@@ -415,6 +474,17 @@ void Simulation::setLane(Vehicle* vehicle_)
         case(WEST): vehicle_->setLane(closestLane(vehicle_->currentPosition()[y], road));
             break;
         default: SWERRINT(my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath()));
+    }
+    //lane should have changed by now
+    if(!my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->inLane(vehicle_->number()))
+    {
+        my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->addToLane(vehicle_->number());
+    }
+    //if it is a lane change and not being set because of exiting the intersection this will be false
+    //because it does not need to change roads
+    if(!my_intersection.getRoad(road->roadDirection())->inRoad(vehicle_->number()))
+    {
+       my_intersection.getRoad(road->roadDirection())->addToRoad(vehicle_->number()); 
     }
 }
 
@@ -652,7 +722,7 @@ bool Simulation::vehicleCompleted(Vehicle* vehicle_)
     {
         return true;
     }
-
+    bool return_value = false;
     if (vehicle_->currentState() & THROUGH_INTERSECTION) //cannot be completed without going through the intersection
     {
         bool max_component = maxComponent<float>(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
@@ -667,7 +737,7 @@ bool Simulation::vehicleCompleted(Vehicle* vehicle_)
                         printCompletion(vehicle_);
                     }
                     vehicle_->completed();
-                    return true;
+                    return_value = true;
                 }
             }
             else
@@ -679,7 +749,7 @@ bool Simulation::vehicleCompleted(Vehicle* vehicle_)
                         printCompletion(vehicle_);
                     }
                     vehicle_->completed();
-                    return true;
+                    return_value = true;
                 }
             }
         }
@@ -692,13 +762,189 @@ bool Simulation::vehicleCompleted(Vehicle* vehicle_)
                     printCompletion(vehicle_);
                 }
                 vehicle_->completed();
+                return_value = true;
+            }
+        }
+    }
+    else
+    {
+        return false; //is not through intersection
+    }
+    if(return_value)
+    {
+        if(isActive(vehicle_))
+        {
+            removeFromActiveVehicles(vehicle_);
+        }
+        direction exit_direction = my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath());
+        if (my_intersection.getRoad(exit_direction)->getLane(vehicle_->laneNumber())->inLane(vehicle_->number()))
+        {
+            my_intersection.getRoad(exit_direction)->getLane(vehicle_->laneNumber())->removeFromLane(vehicle_->number());
+        }
+        if(my_intersection.getRoad(exit_direction)->inRoad(vehicle_->number()))
+        {
+            my_intersection.getRoad(exit_direction)->removeFromRoad(vehicle_->number());
+        }
+    }
+    return return_value;
+}
+
+void Simulation::generateVehicle(uint32 number_)
+{
+    path vehicle_path;
+    direction vehicle_direction;
+    uint8 lane_number;
+    DriverType driver_type;
+
+    std::random_device root;
+    std::mt19937 random_path(root());
+    std::mt19937 random_direction(root());
+    std::mt19937 random_lane_number(root());
+    std::mt19937 random_driver_type(root());
+
+    std::uniform_int_distribution<> path_distribution(1, 3);
+    std::uniform_int_distribution<> direction_distribution(0, 3);
+    std::uniform_int_distribution<> driver_type_distribution(1, 3);
+
+    uint8 switch_placeholder = path_distribution(random_path);
+    switch(switch_placeholder)
+    {
+        case(1): vehicle_path = LEFT;
+            break;
+        case(2): vehicle_path = STRAIGHT;
+            break;
+        case(3): vehicle_path = RIGHT;
+            break;
+        default: SWERRINT(switch_placeholder);
+    }
+
+    switch_placeholder = direction_distribution(random_direction);
+    switch(switch_placeholder)
+    {
+        case(0):
+        {
+            vehicle_direction = NORTH;
+            std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ns_number_of_entries - 1);
+            lane_number = lane_number_distribution(random_lane_number) + intersection_params.ns_number_of_exits;
+        }
+            break;
+        case(1):
+        {
+            vehicle_direction = SOUTH;
+            std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ns_number_of_entries - 1);
+            lane_number = lane_number_distribution(random_lane_number) + intersection_params.ns_number_of_exits;
+        }
+            break;
+        case(2):
+        {
+            vehicle_direction = EAST;
+            std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ew_number_of_entries - 1);
+            lane_number = lane_number_distribution(random_lane_number) + intersection_params.ew_number_of_exits;
+        }
+            break;
+        case(3):
+        {
+            vehicle_direction = WEST;
+            std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ew_number_of_entries - 1);
+            lane_number = lane_number_distribution(random_lane_number) + intersection_params.ew_number_of_exits;
+        } 
+            break;
+        default: SWERRINT(switch_placeholder);
+    }
+
+    switch_placeholder = driver_type_distribution(random_driver_type);
+    switch(switch_placeholder)
+    {
+        case(1): driver_type = CALM;
+            break;
+        case(2): driver_type = NORMAL;
+            break;
+        case(3): driver_type = AGGRESSIVE;
+            break;
+        default: SWERRINT(switch_placeholder);
+    }
+    std::cout << number_ << std::endl;
+    vehicle_list[number_] = new Car(number_, vehicle_path, my_intersection.getRoad(vehicle_direction)->getLane(lane_number), driver_type);
+
+    if(simulation_params.print_simulation_events)
+    {
+        printVehicleArrival(vehicle_list[number_]);
+    }
+    addToActiveVehicles(vehicle_list[number_]);
+    my_intersection.getRoad(vehicle_list[number_]->vehicleDirection())->addToRoad(number_);
+    my_intersection.getRoad(vehicle_list[number_]->vehicleDirection())->getLane(vehicle_list[number_]->laneNumber())->addToLane(number_);
+}
+
+Vehicle* Simulation::vehicleAtIndex(uint32 index_)
+{
+    try
+    {
+        if(index_ < active_vehicles.size() && index_ >= 0)
+        {
+            return active_vehicles[index_];
+        }
+        else
+        {
+            throw(std::out_of_range("Out of Vehicle List Bounds"));
+        }
+    }
+    catch (const std::out_of_range &Out_of_Range)
+    {
+        //hard SWERR
+        SWERRINT(index_);
+        throw;
+    }
+}
+
+uint32 Simulation::indexOfVehicle(Vehicle* vehicle_)
+{
+    if(active_vehicles.size() > 0)
+    {
+        for(uint32 i = 0; i < active_vehicles.size(); i++)
+        {
+            if(active_vehicles[i] == vehicle_)
+            {
+                return i;
+            }
+        }
+    }
+    SWERRINT(-1);
+    return 0;
+}
+
+bool Simulation::isActive(Vehicle* vehicle_)
+{
+    if(active_vehicles.size() > 0)
+    {
+        for(uint32 i = 0; i < active_vehicles.size(); i++)
+        {
+            if(active_vehicles[i] == vehicle_)
+            {
                 return true;
             }
         }
     }
-    return false; //is not through intersection
+    return false;
 }
 
+void Simulation::addToActiveVehicles(Vehicle* vehicle_)
+{
+    active_vehicles.insert(active_vehicles.begin(), vehicle_);
+}
+
+bool Simulation::removeFromActiveVehicles(Vehicle* vehicle_)
+{
+    if(isActive(vehicle_))
+    {
+        active_vehicles.erase(active_vehicles.begin() + indexOfVehicle(vehicle_));
+        return true;
+    }
+    else
+    {
+        SWERRINT(vehicle_->number()<<8 + vehicle_->currentState());
+        return false;
+    }
+}
 
 //Printing funtions, no need for explanation
 //They print things
@@ -715,7 +961,7 @@ void Simulation::printResults()
     //actions
 
     results.open("./Output/Results.txt");
-    results << car->totalTime() << std::endl;
+    results << vehicle_list[0]->totalTime() << std::endl;
     results.close();
 }
 
@@ -727,4 +973,9 @@ void Simulation::printLaneChange(Vehicle* vehicle_, uint8 new_lane_)
 void Simulation::printTrafficLightStateChange(TrafficLight* traffic_light_)
 {
     events << elapsed_time << " Traffic light now in state: " << LIGHT_EVENT_STATE_STR[traffic_light_->currentEvent()] << " (" << traffic_light_->state() << ")" << std::endl;
+}
+
+void Simulation::printVehicleArrival(Vehicle* vehicle_)
+{
+    events << elapsed_time << " Vehicle " << vehicle_->name() << " has arrived from " << DIRECTION_STR[vehicle_->vehicleDirection()] << " heading " << PATH_STR[vehicle_->vehiclePath()] << std::endl;
 }

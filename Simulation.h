@@ -33,17 +33,31 @@ private:
     path changeLaneDirection(Vehicle* vehicle_);
     bool overCenterLine(Vehicle* vehicle_, path lane_change_direction_);
     bool vehicleCompleted(Vehicle* vehicle_);
+    void generateVehicle(uint32 number_);
+
+    //active vehicles functions
+    Vehicle* vehicleAtIndex(uint32 index_);
+    uint32 indexOfVehicle(Vehicle* vehicle_);
+    bool isActive(Vehicle* vehicle_);
+    void addToActiveVehicles(Vehicle* vehicle_);
+    bool removeFromActiveVehicles(Vehicle* vehicle_);
 
     //printing functions (note that changeState() is a partial printing function but not listed here)
     void printResults();
     void printCompletion(Vehicle* vehicle_);
     void printLaneChange(Vehicle* vehicle_, uint8 new_lane_);
     void printTrafficLightStateChange(TrafficLight* traffic_light_);
+    void printVehicleArrival(Vehicle* vehicle_);
     
     bool light_change_occured;
+    uint32 my_vehiclesMade;
     double elapsed_time; //Total time the simulation has been running
     Intersection my_intersection; //Holds the intersection information
     Vehicle* car; //Will be changed to a list later
+
+    Vehicle** vehicle_list; //list of all vehicles (active and inactive)
+    std::vector<Vehicle*> active_vehicles;
+
     std::ofstream events; //used for printing events
     std::ofstream results; //used for printing results at end of simulation
 };
