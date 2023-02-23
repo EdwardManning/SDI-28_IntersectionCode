@@ -7,6 +7,83 @@ Road::Road()
     //leave empty for initialization of blank array
 }
 
+uint32 Road::vehicleAtIndex(uint32 index_)
+{
+    try
+    {
+        if(index_ < my_vehicles.size() && index_ >= 0)
+        {
+            return my_vehicles[index_];
+        }
+        else
+        {
+            throw(std::out_of_range("Out of Vehicle List Bounds"));
+        }
+    }
+    catch (const std::out_of_range &Out_of_Range)
+    {
+        //hard SWERR
+        SWERRINT(index_);
+        throw;
+    }
+}
+
+uint32 Road::indexOfVehicle(uint32 vehicle_number_)
+{
+    if (my_vehicles.size() > 0)
+    {
+        for(uint32 i = 0; i < my_vehicles.size(); i++)
+        {
+            if (vehicle_number_ == my_vehicles[i])
+            {
+                return i;
+            }
+        }
+    }
+    SWERRINT(-1);
+    return 0;
+}
+
+bool Road::inRoad(uint32 vehicle_number_)
+{
+    if (my_vehicles.size() > 0)
+    {
+        for(uint32 i = 0; i < my_vehicles.size(); i++)
+        {
+            if (vehicle_number_ == my_vehicles[i])
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void Road::addToRoad(uint32 vehicle_number_)
+{
+    my_vehicles.insert(my_vehicles.begin(), vehicle_number_);
+}
+
+void Road::addToRoad(uint32 vehicle_number_, uint32 index_)
+{
+    my_vehicles.insert(my_vehicles.begin() + index_, vehicle_number_);
+}
+
+void Road::removeFromRoad()
+{
+    my_vehicles.pop_back();
+}
+
+bool Road::removeFromRoad(uint32 vehicle_number_)
+{
+    if (inRoad(vehicle_number_))
+    {
+        my_vehicles.erase(my_vehicles.begin() + indexOfVehicle(vehicle_number_));
+        return true;
+    }
+    return false;
+}
+
 /*
 *   Name: getLane
 *
@@ -73,4 +150,9 @@ direction Road::roadDirection()
 uint8 Road::speedLimit()
 {
     return my_speedLimit;
+}
+
+uint32 Road::numberOfVehicles()
+{
+    return my_vehicles.size();
 }

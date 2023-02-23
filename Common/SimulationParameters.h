@@ -13,6 +13,7 @@ class SimulationParameters
 public:
     SimulationParameters();
     float time_step = 0.01;
+    uint32 number_of_vehicles = 5;
     bool print_simulation_events;
     bool print_vehicle_info;
 protected:

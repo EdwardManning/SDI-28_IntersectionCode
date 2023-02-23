@@ -15,7 +15,7 @@
 *   Output: N/A
 *
 */
-Car::Car(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
+Car::Car(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
 {
     my_number = number_;
     my_vehicleType = CAR;

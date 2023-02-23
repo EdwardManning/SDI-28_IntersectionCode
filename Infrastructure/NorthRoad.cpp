@@ -1,5 +1,4 @@
 #include "./NorthRoad.h"
-
 //Function definitions for NorthRoad.h
 
 /*

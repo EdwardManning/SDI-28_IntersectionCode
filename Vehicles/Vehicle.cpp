@@ -8,7 +8,7 @@ Vehicle::Vehicle()
 }
 
 //the following should never be used
-Vehicle::Vehicle(uint16 number_, path path_, Lane* lane_, DriverType driver_type_)
+Vehicle::Vehicle(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
 {
     SWERRINT(number_<<5 + path_<<2 + driver_type_);
 }
@@ -886,7 +886,7 @@ float* Vehicle::currentAcceleration()
     return my_currentAcceleration;
 }
 
-uint16 Vehicle::number()
+uint32 Vehicle::number()
 {
     return my_number;
 }
