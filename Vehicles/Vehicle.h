@@ -34,6 +34,9 @@ public:
     void stopTurn(Lane* lane_);
     bool collisionCheck(Vehicle* vehicle_);
     bool lightChange(lightColour colour_);
+    bool checkImportantPosition(Vehicle* vehicle_);
+    void setMaxSpeed(float new_max_speed_);
+    void setCurrentSeparation(float separation_);
 
     //less important functions
     void changeState(state state_, const bool adding_);
@@ -54,13 +57,29 @@ public:
     float timeInIntersection();
     float totalTime();
     float* exteriorPosition(vehiclePoints vehicle_point_);
+    float* exteriorPosition(uint8 vehicle_point_);
     bool isCompleted();
+    int8* unitVector();
     float currentAccelerationMagnitude();
+    bool blinker(path direction_);
+    bool blinker(bool direction_);
+    bool brakeLights();
+    float mimumumStoppingDistance();
+    float minimumFollowingDistance();
+    float currentSeparation();
+
+    void toggleBlinker(path direction_, bool on_);
+    void toggleBrakeLights(bool on_);
     bool yellowLightAnalysis();
+    bool yellowLightAnalysis(float current_acceleration_);
     bool redLightAnalysis();
+    bool redLightAnalysis(float current_acceleration);
+    void requestAccelerationAdjustment(float adjustment_, bool is_positive_ = true);
 protected:
     void draw(bool initialization_ = false);
     void updateUnitVector();
+    void adjustAccelerationMagnitude(float adjustment_, bool is_positive_);
+    void adjustAccelerationMagnitude(float acceleration_magnitude_);
 
     //printing functions
     void printStartingInformation();
@@ -92,6 +111,10 @@ protected:
     float my_accelerationMagnitude;
     bool my_dot;
     int8 my_unitVector[2];
+    float my_targetSpeed;
+    bool my_blinker[2]; //left is 0, right is 1
+    bool my_brakeLights;
+    float my_currentSeparation;
     std::ofstream info;
 private:
 };

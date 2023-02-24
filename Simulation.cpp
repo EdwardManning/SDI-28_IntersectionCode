@@ -21,9 +21,10 @@ Simulation::Simulation()
     }
     my_vehiclesMade = 0;
     vehicle_list = new Vehicle*[simulation_params.number_of_vehicles];
-    
+    average_time_between_spawn = 0;
     generateVehicle(my_vehiclesMade);
     my_vehiclesMade++;
+    my_spawnTimer = 0;
     light_change_occured = false;
     elapsed_time = 0;
     run();
@@ -59,19 +60,24 @@ Simulation::~Simulation()
 */
 void Simulation::run()
 {
-    float spawn_countdown = 4;
     //debugIntersection();
-    while((!completionCheck() || (my_vehiclesMade != simulation_params.number_of_vehicles)) && elapsed_time < 300)
-    {
-        if (vehicle_list[0]->vehicleType() == CAR)
+    while(!completionCheck() && elapsed_time < 1000000)
+    {   
+        for(uint32 i = 0; i < active_vehicles.size(); i++)
         {
-            driverPerformActions(vehicle_list[0]);
-        }
-        else
-        {
-            //will eventually be used with vehiclePerformActions
-            //for autonomous vehicles
-            SWERRINT(vehicle_list[0]->vehicleType());
+            if (active_vehicles[i]->vehicleType() == CAR)
+            {
+                if(!(active_vehicles[i]->isCompleted()))
+                {
+                    driverPerformActions(active_vehicles[i]);
+                }
+            }
+            else
+            {
+                //will eventually be used with vehiclePerformActions
+                //for autonomous vehicles
+                SWERRINT(active_vehicles[i]->vehicleType());
+            }
         }
         if(my_intersection.trafficLight()->makeStep())
         {
@@ -85,14 +91,23 @@ void Simulation::run()
         {
             light_change_occured = false;
         }
+        
         elapsed_time += simulation_params.time_step;
-        spawn_countdown -= simulation_params.time_step;
-        if (spawn_countdown <= 0 && my_vehiclesMade < simulation_params.number_of_vehicles)
+        if (my_vehiclesMade < simulation_params.number_of_vehicles)
         {
-            spawn_countdown = 4;
-            generateVehicle(my_vehiclesMade);
-            my_vehiclesMade++;
+            if(spawnVehicle())
+            {
+                generateVehicle(my_vehiclesMade);
+                my_vehiclesMade++;
+                average_time_between_spawn += my_spawnTimer;
+                my_spawnTimer = 0;
+            }
+            else
+            {
+                my_spawnTimer += simulation_params.time_step;
+            }
         }
+
     }
     std::cout << elapsed_time << std::endl;
 }
@@ -110,14 +125,26 @@ void Simulation::run()
 */
 bool Simulation::completionCheck()
 {
-    for(uint32 i = 0; i < simulation_params.number_of_vehicles; i++)
+    if(collisionAnalysis()) //collision happened
     {
-        if (!vehicleCompleted(vehicle_list[i]))
-        {
-            return false;
-        }
+        return true;
     }
-    return true;
+    if(my_vehiclesMade < simulation_params.number_of_vehicles)
+    {
+        return false;
+    }
+    else
+    {
+        bool return_value = true;
+        for(uint32 i = 0; i < simulation_params.number_of_vehicles; i++)
+        {
+            if (!vehicleCompleted(vehicle_list[i]))
+            {
+                return_value = false;
+            }
+        }
+        return return_value;
+    }
 }
 
 /*
@@ -145,7 +172,7 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         }
         else
         {
-            SWERRINT(vehicle_->currentState());
+            SWERRINT(vehicle_->number()<<8 + vehicle_->currentState());
         }
         //if it is in the lane
         if(my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->inLane(vehicle_->number()))
@@ -154,7 +181,8 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         }
         else
         {
-            SWERRINT(vehicle_->currentState());
+            std::cout << vehicle_->number() << " " << (int)vehicle_->currentState() << " " << (int)vehicle_->laneNumber() << std::endl;
+            SWERRINT(vehicle_->number()<<8 + vehicle_->currentState());
         }
         //if it is in the road
         if(my_intersection.getRoad(vehicle_->vehicleDirection())->inRoad(vehicle_->number()))
@@ -163,7 +191,7 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         }
         else
         {
-            SWERRINT(vehicle_->currentState());
+            SWERRINT(vehicle_->number()<<8 + vehicle_->currentState());
         }
 
         if (vehicle_->vehiclePath() != STRAIGHT)
@@ -201,141 +229,15 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         }
     }
     
-    if(!(vehicle_->currentState() & THROUGH_INTERSECTION) &&
-       !(vehicle_->currentState() & IN_INTERSECTION))
-    {
-        if (light_change_occured)
-        {
-            if(vehicle_->lightChange(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection())))
-            {
-                //driving check is necessary because it could be tripped if stopped
-                if(!(vehicle_->currentState() & DECELERATING) &&
-                   (vehicle_->currentState() & DRIVING))
-                {      
-                    vehicle_->accelerate(STOP);
-                    if (vehicle_->currentAccelerationMagnitude() > 0)
-                    {
-                        changeState(vehicle_, DECELERATING, ADD);
-                        if (vehicle_->currentState() & ACCELERATING)
-                        {
-                            changeState(vehicle_, ACCELERATING, REMOVE);
-                        }
-                    }
-                    else
-                    {
-                        SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
-                    }
-                }
-            }
-            else
-            {
-                if (MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) < vehicle_->maxSpeed())
-                {
-                    if (!(vehicle_->currentState() & ACCELERATING))
-                    {
-                        vehicle_->accelerate(vehicle_->maxSpeed());
-                        if (vehicle_->currentAccelerationMagnitude() > 0)
-                        {
-                            changeState(vehicle_, ACCELERATING, ADD);
-                            if (!(vehicle_->currentState() & DRIVING))
-                            {
-                                changeState(vehicle_, DRIVING, ADD);
-                            }
-                            if (vehicle_->currentState() & DECELERATING)
-                            {
-                                changeState(vehicle_, DECELERATING, REMOVE);
-                            }
-                        }
-                        else
-                        {
-                            SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
-                        }
-                    }
-                }
-            }
-        }
-        else //it could already be red or yellow
-        {
-            if(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == YELLOW)
-            {
-                if (vehicle_->yellowLightAnalysis())
-                {
-                    //driving check is necessary because it could be tripped if stopped
-                    if(!(vehicle_->currentState() & DECELERATING) && 
-                       (vehicle_->currentState() & DRIVING))
-                    {      
-                        vehicle_->accelerate(STOP);
-                        if (vehicle_->currentAccelerationMagnitude() > 0)
-                        {
-                            changeState(vehicle_, DECELERATING, ADD);
-                            if (vehicle_->currentState() & ACCELERATING)
-                            {
-                                changeState(vehicle_, ACCELERATING, REMOVE);
-                            }
-                        }
-                        else
-                        {
-                        SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
-                        }
-                    }
-                }
-            }
-            else if(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == RED)
-            {
-                if (vehicle_->redLightAnalysis())
-                {
-                    //driving check is necessary because it could be tripped if stopped
-                    if(!(vehicle_->currentState() & DECELERATING) &&
-                       (vehicle_->currentState() & DRIVING))
-                    {      
-                        vehicle_->accelerate(STOP);
-                        if (vehicle_->currentAccelerationMagnitude() > 0)
-                        {
-                            changeState(vehicle_, DECELERATING, ADD);
-                            if (vehicle_->currentState() & ACCELERATING)
-                            {
-                                changeState(vehicle_, ACCELERATING, REMOVE);
-                            }
-                        }
-                        else
-                        {
-                            SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
-                        }
-                    }
-                }
-            }
-        }
-    }
-    else //through intersection, no red or yellow lights
-    {
-        if (MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) < vehicle_->maxSpeed())
-        {
-            if (!(vehicle_->currentState() & ACCELERATING))
-            {
-                vehicle_->accelerate(vehicle_->maxSpeed());
-                if (vehicle_->currentAccelerationMagnitude() > 0)
-                {
-                    changeState(vehicle_, ACCELERATING, ADD);
-                    if (!(vehicle_->currentState() & DRIVING))
-                    {
-                        changeState(vehicle_, DRIVING, ADD);
-                    }
-                    if (vehicle_->currentState() & DECELERATING)
-                    {
-                        changeState(vehicle_, DECELERATING, REMOVE);
-                    }
-                }
-                else
-                {
-                    SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
-                }
-            }
-        }
-    }
+    determineAcceleration(vehicle_);
     
     if(!(vehicle_->currentState() & CORRECT_LANE))
     {
         path lane_change_direction = changeLaneDirection(vehicle_);
+        if(!vehicle_->blinker(lane_change_direction))
+        {
+            vehicle_->toggleBlinker(lane_change_direction, ON);
+        }
         if(vehicle_->currentState() & CHANGING_LANES)
         {
             if (overCenterLine(vehicle_, lane_change_direction))
@@ -346,19 +248,31 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
                 {
                     printLaneChange(vehicle_, new_lane);
                 }
+                if(my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->inLane(vehicle_->number()))
+                {
+                    my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->removeFromLane(vehicle_->number());
+                }
                 vehicle_->setLane(new_lane);
+                if(!my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->inLane(vehicle_->number()))
+                {
+                    my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->addToLane(vehicle_->number());
+                }
                 if(vehicle_->correctLane(my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())))
                 {
+                    vehicle_->toggleBlinker(lane_change_direction, OFF);
                     changeState(vehicle_, CORRECT_LANE, ADD);
                     changeState(vehicle_, CHANGING_LANES, REMOVE);
+                    vehicle_->stopLaneChange();
                 }
-                vehicle_->stopLaneChange();
             }
         }
         else
         {
-            changeState(vehicle_, CHANGING_LANES, ADD);
-            vehicle_->changeLane(lane_change_direction);
+            if(!laneChangeDecelerationRequired(vehicle_))
+            {
+                changeState(vehicle_, CHANGING_LANES, ADD);
+                vehicle_->changeLane(lane_change_direction);
+            }
         }
     }
     if ((vehicle_->currentState() & ACCELERATING) | (vehicle_->currentState() & DECELERATING))
@@ -368,7 +282,11 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
             if (vehicle_->currentState() & DECELERATING)
             {
                 changeState(vehicle_, DECELERATING, REMOVE);
-                changeState(vehicle_, DRIVING, REMOVE);
+                vehicle_->toggleBrakeLights(OFF);
+                if(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) == 0)
+                {
+                    changeState(vehicle_, DRIVING, REMOVE);
+                }
             }
             else if (vehicle_->currentState() & ACCELERATING)
             {
@@ -450,6 +368,7 @@ bool Simulation::passedExitStartLine(Vehicle* vehicle_)
 *
 *   Description: Sets the lane of the vehicle. Used after vehicle
 *                exits the intersection and is now in the exit lane.
+*                NOTE: THIS IS NOT USED IN LANE CHANGES.
 *
 *   Input: vehicle_ -> Pointer to the vehicle in question.
 *
@@ -475,13 +394,10 @@ void Simulation::setLane(Vehicle* vehicle_)
             break;
         default: SWERRINT(my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath()));
     }
-    //lane should have changed by now
     if(!my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->inLane(vehicle_->number()))
     {
         my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->addToLane(vehicle_->number());
     }
-    //if it is a lane change and not being set because of exiting the intersection this will be false
-    //because it does not need to change roads
     if(!my_intersection.getRoad(road->roadDirection())->inRoad(vehicle_->number()))
     {
        my_intersection.getRoad(road->roadDirection())->addToRoad(vehicle_->number()); 
@@ -680,6 +596,29 @@ bool Simulation::overCenterLine(Vehicle* vehicle_, path lane_change_direction_)
     return true;
 }
 
+bool Simulation::shoulderCheck(Vehicle* vehicle_, path lane_change_direction_)
+{
+    int8 lane_change_modifier = lane_change_direction_ == LEFT ? -1 : 1;
+    uint8 current_lane = vehicle_->laneNumber();
+    uint8 next_lane_number = current_lane + lane_change_modifier;
+
+    if(my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(next_lane_number)->numberOfVehicles() == 0)
+    {
+        return true;
+    }
+    else
+    {
+        for(uint32 i = 0; i < my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(next_lane_number)->numberOfVehicles(); i++)
+        {
+            if (vehicle_->checkImportantPosition(vehicle_list[my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(next_lane_number)->vehicleAtIndex(i)]))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
 /*
 *   Name: changeState
 *
@@ -785,10 +724,764 @@ bool Simulation::vehicleCompleted(Vehicle* vehicle_)
         {
             my_intersection.getRoad(exit_direction)->removeFromRoad(vehicle_->number());
         }
+        if(!vehicle_->isCompleted())
+        {
+            vehicle_->completed();
+            if(simulation_params.print_simulation_events)
+            {
+                printCompletion(vehicle_);
+            }
+        }
     }
     return return_value;
 }
 
+//acceleration related code
+void Simulation::determineAcceleration(Vehicle* vehicle_)
+{
+    if(!closeVehicleDecelerationRequired(vehicle_))
+    {
+        if(!laneChangeDecelerationRequired(vehicle_))
+        {
+            if(!lightChangeDecelerationRequired(vehicle_))
+            {
+                if(!lightColourDecelerationRequired(vehicle_))
+                {
+                    if(!maxSpeedDecelerationRequired(vehicle_))
+                    {
+                        //if there is no need to decelerate we can accelerate if necessary
+                        if(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y] < vehicle_->maxSpeed()))
+                        {
+                            startAcceleration(vehicle_, vehicle_->maxSpeed());
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            if(light_change_occured)
+            {
+                if((vehicle_->yellowLightAnalysis(vehicle_->currentAccelerationMagnitude()) &&
+                   my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == YELLOW) ||
+                   (vehicle_->redLightAnalysis(vehicle_->currentAccelerationMagnitude()) &&
+                   my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == RED))
+                {
+                    //if the potential required deceleration due to the light changing is greater
+                    //than the deceleration due to vehicles around, vehicle must stop faster
+                    //this will not necessarily increase the deceleration but it will check if it 
+                    //is necessary
+                    lightChangeDecelerationRequired(vehicle_);
+                }
+            }
+        }
+    }
+    else
+    {
+        if(light_change_occured)
+        {
+            if((vehicle_->yellowLightAnalysis(vehicle_->currentAccelerationMagnitude()) &&
+               my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == YELLOW) ||
+               (vehicle_->redLightAnalysis(vehicle_->currentAccelerationMagnitude()) &&
+               my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == RED))
+            {
+                //if the potential required deceleration due to the light changing is greater
+                //than the deceleration due to vehicles around, vehicle must stop faster
+                //this will not necessarily increase the deceleration but it will check if it 
+                //is necessary
+                lightChangeDecelerationRequired(vehicle_);
+            }
+        }
+    }
+    return;
+}
+
+bool Simulation::closeVehicleDecelerationRequired(Vehicle* vehicle_)
+{
+    if(vehicle_->currentState() & THROUGH_INTERSECTION)
+    {
+        return postIntersectionCloseDecelerationRequired(vehicle_);
+    }
+    else if(vehicle_->currentState() & IN_INTERSECTION)
+    {
+        return inIntersectionCloseDecelerationRequired(vehicle_);
+    }
+    else //haven't entered the interesection yet
+    {
+        return preIntersectionCloseDecelerationRequired(vehicle_);
+    }
+}
+
+bool Simulation::preIntersectionCloseDecelerationRequired(Vehicle* vehicle_)
+{
+    if(vehicleAhead(vehicle_, false))
+    {
+        Vehicle* vehicle_ahead = whichVehicleAhead(vehicle_, false);
+        if(vehicle_->number() != vehicle_ahead->number())
+        {
+            float current_separation = vehicleSeparation(vehicle_, vehicle_ahead);
+            if(vehicle_->currentSeparation() == -1)
+            {
+                vehicle_->setCurrentSeparation(current_separation);
+            }
+
+            if(current_separation < vehicle_->minimumFollowingDistance())
+            {
+                
+                if(!(vehicle_->currentState() & DECELERATING))
+                {
+                    float target_speed = 0.75 * MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+                    startDeceleration(vehicle_, target_speed);
+                }
+                else
+                {
+                    //increase deceleration by 0.5m/s^2
+                    vehicle_->requestAccelerationAdjustment(0.5);
+                }
+                vehicle_->setCurrentSeparation(current_separation);
+                return true;
+            }
+            else
+            {
+                if(current_separation < vehicle_->currentSeparation() ||
+                   vehicle_ahead->brakeLights())
+                {
+                    
+                    if(!(vehicle_->currentState() & DECELERATING))
+                    {
+                        float target_speed = 0.95 * MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+                        startDeceleration(vehicle_, target_speed);
+                    }
+                    else
+                    {
+                        //increase deceleration by 0.5m/s^2
+                        vehicle_->requestAccelerationAdjustment(0.5);
+                    }
+                    vehicle_->setCurrentSeparation(current_separation);
+                    return true;
+                }
+            }
+            vehicle_->setCurrentSeparation(current_separation);
+        }
+        else
+        {
+            SWERRINT(vehicle_->number());
+        }
+    }
+    if (closeLaneChangeDecelerationRequired(vehicle_))
+    {
+        if(!(vehicle_->currentState() & DECELERATING))
+        {
+            float target_speed = 0.85 * MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+            startDeceleration(vehicle_, target_speed);
+        }
+        else
+        {
+            //increase deceleration by 0.5m/s^2
+            vehicle_->requestAccelerationAdjustment(0.5);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool Simulation::closeLaneChangeDecelerationRequired(Vehicle* vehicle_)
+{
+    path current_lane_path = my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->lanePath();
+    switch(current_lane_path)
+    {
+        case(LEFT):
+        {
+            return (checkLaneBlinkers(vehicle_, my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber() + 1), 1));
+        }
+            break;
+        case(RIGHT):
+        {
+            return (checkLaneBlinkers(vehicle_, my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber() - 1), -1));
+        }
+            break;
+        case(STRAIGHT):
+        {
+            return (checkLaneBlinkers(vehicle_, my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber() + 1), 1)) ||
+                   (checkLaneBlinkers(vehicle_, my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber() - 1), -1));
+        }
+            break;
+        default: SWERRINT(current_lane_path);
+    }
+    return false;
+}
+
+bool Simulation::inIntersectionCloseDecelerationRequired(Vehicle* vehicle_)
+{
+    if(scanAhead(vehicle_))
+    {
+        if(!(vehicle_->currentState() & DECELERATING))
+        {
+            float target_speed = 0.75 * MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+            startDeceleration(vehicle_, target_speed);
+        }
+        else
+        {
+            //increase deceleration by 0.5m/s^2
+            vehicle_->requestAccelerationAdjustment(0.5);
+        }
+        return true;
+    }
+
+    if(vehicle_->vehiclePath() == LEFT)
+    {
+        if(!checkIntersectionClear(vehicle_))
+        {
+            startDeceleration(vehicle_, STOP);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Simulation::postIntersectionCloseDecelerationRequired(Vehicle* vehicle_)
+{
+    if(vehicleAhead(vehicle_, true))
+    {
+        Vehicle* vehicle_ahead = whichVehicleAhead(vehicle_, true);
+        if(vehicle_->number() != vehicle_ahead->number())
+        {
+            float current_separation = vehicleSeparation(vehicle_, vehicle_ahead);
+            if(vehicle_->currentSeparation() == -1)
+            {
+                vehicle_->setCurrentSeparation(current_separation);
+            }
+
+            if(current_separation < vehicle_->minimumFollowingDistance())
+            {
+                
+                if(!(vehicle_->currentState() & DECELERATING))
+                {
+                    float target_speed = 0.75 * MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+                    startDeceleration(vehicle_, target_speed);
+                }
+                else
+                {
+                    //increase deceleration by 0.5m/s^2
+                    vehicle_->requestAccelerationAdjustment(0.5);
+                }
+                vehicle_->setCurrentSeparation(current_separation);
+                return true;
+            }
+            else
+            {
+                if(current_separation < vehicle_->currentSeparation() ||
+                   vehicle_ahead->brakeLights())
+                {
+                    
+                    if(!(vehicle_->currentState() & DECELERATING))
+                    {
+                        float target_speed = 0.95 * MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+                        startDeceleration(vehicle_, target_speed);
+                    }
+                    else
+                    {
+                        //increase deceleration by 0.5m/s^2
+                        vehicle_->requestAccelerationAdjustment(0.5);
+                    }
+                    vehicle_->setCurrentSeparation(current_separation);
+                    return true;
+                }
+            }
+            vehicle_->setCurrentSeparation(current_separation);
+        }
+        else
+        {
+            SWERRINT(vehicle_->number());
+        }
+    }
+    return false;
+}
+
+bool Simulation::laneChangeDecelerationRequired(Vehicle* vehicle_)
+{
+    if(vehicle_->currentState() & CORRECT_LANE)
+    {
+        return false;
+    }
+    //shoulderCheck returns true if it is clear to change lanes
+    //therefore if it is true there is no need for acceleration and 
+    //this should return false
+    if (!shoulderCheck(vehicle_, changeLaneDirection(vehicle_)))
+    {
+        if(!(vehicle_->currentState() & DECELERATING))
+        {
+            float new_speed = 0.8 * vehicle_->maxSpeed();
+            startDeceleration(vehicle_, new_speed);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool Simulation::lightChangeDecelerationRequired(Vehicle* vehicle_)
+{
+    //no lights in or through intersection
+    if((vehicle_->currentState() & IN_INTERSECTION) || vehicle_->currentState() & THROUGH_INTERSECTION)
+    {
+        return false;
+    }
+    if(!light_change_occured)
+    {
+        return false;
+    }
+    //light change returns true if decelerating is required
+    if(vehicle_->lightChange(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection())))
+    {
+        startDeceleration(vehicle_, STOP);
+        return true;
+    }
+    return false;
+}
+
+bool Simulation::lightColourDecelerationRequired(Vehicle* vehicle_)
+{
+    //no lights in or through intersection
+    if((vehicle_->currentState() & IN_INTERSECTION) || vehicle_->currentState() & THROUGH_INTERSECTION)
+    {
+        return false;
+    }
+
+    if(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == YELLOW)
+    {
+        //returns true if stop required at yellow light
+        if(vehicle_->yellowLightAnalysis())
+        {
+            startDeceleration(vehicle_, STOP);
+            return true;
+        }
+    }
+    else if(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == RED)
+    {
+        if(vehicle_->redLightAnalysis())
+        {
+            startDeceleration(vehicle_, STOP);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Simulation::maxSpeedDecelerationRequired(Vehicle* vehicle_)
+{
+    float velocity_magnitude = MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+    if(velocity_magnitude > vehicle_->maxSpeed())
+    {  
+        startDeceleration(vehicle_, vehicle_->maxSpeed());
+        return true;
+    }
+    return false;
+}
+
+void Simulation::startAcceleration(Vehicle* vehicle_, float target_speed_)
+{
+    if(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) < target_speed_)
+    {
+        if (!(vehicle_->currentState() & ACCELERATING))
+        {
+            vehicle_->accelerate(vehicle_->maxSpeed());
+            if (vehicle_->currentAccelerationMagnitude() > 0)
+            {
+                changeState(vehicle_, ACCELERATING, ADD);
+                if (!(vehicle_->currentState() & DRIVING))
+                {
+                    changeState(vehicle_, DRIVING, ADD);
+                }
+                if (vehicle_->currentState() & DECELERATING)
+                {
+                    changeState(vehicle_, DECELERATING, REMOVE);
+                    vehicle_->toggleBrakeLights(OFF);
+                }
+            }
+            else
+            {
+                SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
+            }
+        }
+    }
+}
+
+void Simulation::startDeceleration(Vehicle* vehicle_, float target_speed_)
+{
+    if(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) > target_speed_)
+    {
+        if(!(vehicle_->currentState() & DECELERATING) &&
+            (vehicle_->currentState() & DRIVING))
+        {   
+            vehicle_->accelerate(target_speed_);
+            if (vehicle_->currentAccelerationMagnitude() > 0)
+            {
+                changeState(vehicle_, DECELERATING, ADD);
+                if (vehicle_->currentState() & ACCELERATING)
+                {
+                    changeState(vehicle_, ACCELERATING, REMOVE);
+                }
+                vehicle_->toggleBrakeLights(ON);
+            }
+            else
+            {
+                SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
+            }
+        }
+    }
+}
+
+bool Simulation::checkLaneBlinkers(Vehicle* vehicle_, Lane* lane_, int8 direction_)
+{
+    if(lane_->numberOfVehicles() < 1)
+    {
+        return false;
+    }
+    else
+    {
+        bool blinker_direction = direction_ > 0;
+        bool dot = maxComponent<float>(vehicle_->unitVector()[x], vehicle_->unitVector()[y]);
+        int8 modifier = vehicle_->unitVector()[dot];
+        for(uint32 i = 0; i < lane_->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[lane_->vehicleAtIndex(i)]->blinker(blinker_direction))
+            {
+                if (modifier > 0)
+                {
+                    if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] &&
+                       vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > (vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] - (1.5 * vehicle_->minimumFollowingDistance())))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] &&
+                       vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < (vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] - (1.5 * vehicle_->minimumFollowingDistance())))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
+
+bool Simulation::scanAhead(Vehicle* vehicle_)
+{
+    if(my_intersection.numberOfVehicles() <= 1)
+    {
+        return true;
+    }
+    float scan_distance = vehicle_->minimumFollowingDistance();
+    bool dot = maxComponent<float>(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+    bool not_dot = !dot;
+    if (vehicle_->currentVelocity()[not_dot] == 0)
+    {
+        for(uint32 i = 0; i < my_intersection.numberOfVehicles(); i++)
+        {
+            if(my_intersection.vehicleAtIndex(i) != vehicle_->number())
+            {
+                if(vehicle_->unitVector()[dot] > 0)
+                {
+                    if (vehicle_list[my_intersection.vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot]
+                            <= vehicle_->exteriorPosition(FRONT_BUMPER)[dot] + scan_distance)
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    if (vehicle_list[my_intersection.vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot]
+                            >= vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - scan_distance)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        float theta = atan(vehicle_->currentVelocity()[not_dot] / vehicle_->currentVelocity()[dot]);
+        float dot_scan_distance = abs(scan_distance * cos(theta));
+        float not_dot_scan_distance = abs(scan_distance * sin(theta));
+        if(!isPositive(vehicle_->currentVelocity()[dot]))
+        {
+            dot_scan_distance *= -1;
+        }
+        if(!isPositive(vehicle_->currentVelocity()[not_dot]))
+        {
+            not_dot_scan_distance *= -1;
+        }
+        for(uint32 i = 0; i < my_intersection.numberOfVehicles(); i++)
+        {
+            if(my_intersection.vehicleAtIndex(i) != vehicle_->number())
+            {
+                Vehicle* checked_vehicle = vehicle_list[my_intersection.vehicleAtIndex(i)];
+                if(checked_vehicle->exteriorPosition(FRONT_BUMPER)[dot] > checked_vehicle->exteriorPosition(BACK_BUMPER)[dot])
+                {
+                    if(checked_vehicle->exteriorPosition(FRONT_BUMPER)[not_dot] > checked_vehicle->exteriorPosition(BACK_BUMPER)[not_dot])
+                    {
+                        if (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] + dot_scan_distance < checked_vehicle->exteriorPosition(FRONT_BUMPER)[dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[dot] + dot_scan_distance > checked_vehicle->exteriorPosition(BACK_BUMPER)[dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[not_dot] + not_dot_scan_distance < checked_vehicle->exteriorPosition(FRONT_BUMPER)[not_dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[not_dot] + not_dot_scan_distance > checked_vehicle->exteriorPosition(BACK_BUMPER)[not_dot])
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        if (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] + dot_scan_distance < checked_vehicle->exteriorPosition(FRONT_BUMPER)[dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[dot] + dot_scan_distance > checked_vehicle->exteriorPosition(BACK_BUMPER)[dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[not_dot] + not_dot_scan_distance > checked_vehicle->exteriorPosition(FRONT_BUMPER)[not_dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[not_dot] + not_dot_scan_distance < checked_vehicle->exteriorPosition(BACK_BUMPER)[not_dot])
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else
+                {
+                    if(checked_vehicle->exteriorPosition(FRONT_BUMPER)[not_dot] > checked_vehicle->exteriorPosition(BACK_BUMPER)[not_dot])
+                    {
+                        if (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] + dot_scan_distance > checked_vehicle->exteriorPosition(FRONT_BUMPER)[dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[dot] + dot_scan_distance < checked_vehicle->exteriorPosition(BACK_BUMPER)[dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[not_dot] + not_dot_scan_distance < checked_vehicle->exteriorPosition(FRONT_BUMPER)[not_dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[not_dot] + not_dot_scan_distance > checked_vehicle->exteriorPosition(BACK_BUMPER)[not_dot])
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        if (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] + dot_scan_distance > checked_vehicle->exteriorPosition(FRONT_BUMPER)[dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[dot] + dot_scan_distance < checked_vehicle->exteriorPosition(BACK_BUMPER)[dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[not_dot] + not_dot_scan_distance > checked_vehicle->exteriorPosition(FRONT_BUMPER)[not_dot] &&
+                            vehicle_->exteriorPosition(FRONT_BUMPER)[not_dot] + not_dot_scan_distance < checked_vehicle->exteriorPosition(BACK_BUMPER)[not_dot])
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool Simulation::checkIntersectionClear(Vehicle* vehicle_)
+{
+    if(my_intersection.numberOfVehicles() > 1)
+    {
+        for(uint32 i = 0; i < my_intersection.numberOfVehicles(); i++)
+        {
+            if(vehicle_->number() == my_intersection.vehicleAtIndex(i))
+            {
+                continue;
+            }
+            else
+            {   
+                if(conflictingPaths(vehicle_, vehicle_list[my_intersection.vehicleAtIndex(i)]))
+                {   
+                    bool conflicting_component = maxComponent(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+                    float distance_from_center;
+                    if(vehicle_list[my_intersection.vehicleAtIndex(i)]->unitVector()[conflicting_component] > 0)
+                    {
+                        distance_from_center = intersection_params.center_coordinates[conflicting_component] - vehicle_list[my_intersection.vehicleAtIndex(i)]->currentPosition()[conflicting_component];
+                    }
+                    else
+                    {
+                        distance_from_center = vehicle_list[my_intersection.vehicleAtIndex(i)]->currentPosition()[conflicting_component] - intersection_params.center_coordinates[conflicting_component];
+                    }
+                    if (!(distance_from_center < 0))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool Simulation::conflictingPaths(Vehicle* current_vehicle_, Vehicle* test_vehicle_)
+{
+    if(current_vehicle_->vehicleDirection() == test_vehicle_->vehicleDirection())
+    {
+        return false;
+    }
+    else
+    {
+        if(current_vehicle_->vehiclePath() == LEFT)
+        {
+            if(test_vehicle_->vehiclePath() == STRAIGHT)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+}
+
+bool Simulation::vehicleAhead(Vehicle* vehicle_, bool through_intersection_)
+{
+    direction road_direction;
+
+    if(through_intersection_)
+    {
+        road_direction = my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath());
+    }
+    else
+    {
+        road_direction = vehicle_->vehicleDirection();
+    }
+
+    Lane* current_lane = my_intersection.getRoad(road_direction)->getLane(vehicle_->laneNumber());
+    uint32 lane_number_of_vehicles = current_lane->numberOfVehicles();
+
+    if(lane_number_of_vehicles > 1)
+    {
+        bool dot = maxComponent<float>(vehicle_->unitVector()[x], vehicle_->unitVector()[y]);
+        int8 modifier = vehicle_->unitVector()[dot];
+        for(uint32 i = 0; i < lane_number_of_vehicles; i++)
+        {
+            if (modifier > 0)
+            {
+                if(vehicle_->number() != current_lane->vehicleAtIndex(i))
+                {
+                    if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < vehicle_list[current_lane->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot])
+                    {
+                        return true;
+                    }
+                }
+            }
+            else
+            {
+                if(vehicle_->number() != current_lane->vehicleAtIndex(i))
+                {
+                    if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > vehicle_list[current_lane->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot])
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+float Simulation::vehicleSeparation(Vehicle* current_vehicle_, Vehicle* ahead_vehicle_)
+{
+    bool dot = maxComponent<float>(current_vehicle_->currentVelocity()[x], current_vehicle_->currentVelocity()[y]);
+    int8 modifier = current_vehicle_->unitVector()[dot];
+    if(modifier > 0)
+    {
+        return ahead_vehicle_->exteriorPosition(BACK_BUMPER)[dot] - current_vehicle_->exteriorPosition(FRONT_BUMPER)[dot];
+    }
+    else
+    {
+        return current_vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - ahead_vehicle_->exteriorPosition(BACK_BUMPER)[dot];
+    }
+}
+
+Vehicle* Simulation::whichVehicleAhead(Vehicle* vehicle_, bool through_intersection_)
+{
+    direction road_direction;
+
+    if(through_intersection_)
+    {
+        road_direction = my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath());
+    }
+    else
+    {
+        road_direction = vehicle_->vehicleDirection();
+    }
+
+    Lane* current_lane = my_intersection.getRoad(road_direction)->getLane(vehicle_->laneNumber());
+    uint32 lane_number_of_vehicles = current_lane->numberOfVehicles();
+
+    if(lane_number_of_vehicles > 1)
+    {
+        bool dot = maxComponent<float>(vehicle_->unitVector()[x], vehicle_->unitVector()[y]);
+        int8 modifier = vehicle_->unitVector()[dot];
+        float current_lowest_separation = 10000000000; //large number so anything will be smaller
+        uint32 corresponding_index_number = -1;
+        for(uint32 i = 0; i < lane_number_of_vehicles; i++)
+        {
+            if (modifier > 0)
+            {
+                if(vehicle_->number() != current_lane->vehicleAtIndex(i))
+                {
+                    //still necessary since there can technically ve negative separation
+                    if (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < vehicle_list[current_lane->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot]) 
+                    {
+                        if(vehicle_list[current_lane->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] - vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < current_lowest_separation)
+                        {
+                            current_lowest_separation = vehicle_list[current_lane->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] - vehicle_->exteriorPosition(FRONT_BUMPER)[dot];
+                            corresponding_index_number = i;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if(vehicle_->number() != current_lane->vehicleAtIndex(i))
+                {
+                    if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > vehicle_list[current_lane->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot])
+                    {
+                        if (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_list[current_lane->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] < current_lowest_separation)
+                        {
+                            current_lowest_separation = vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_list[current_lane->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot];
+                            corresponding_index_number = i;
+                        }
+                    }
+                }
+            }
+        }
+        if(current_lowest_separation < 0)
+        {
+            SWERRFLOAT(corresponding_index_number);
+        }
+        try
+        {      
+            if (corresponding_index_number >= 0)
+            {
+                return(vehicle_list[current_lane->vehicleAtIndex(corresponding_index_number)]);
+            }
+            else
+            {
+                SWERRFLOAT(current_lowest_separation);
+                throw(std::out_of_range("Out of Vehicle List Bounds"));
+            }
+        }
+        catch (const std::out_of_range &Out_of_Range)
+        {
+            //hard SWERR
+            SWERRINT(corresponding_index_number);
+            throw;
+        }
+    }
+    SWERRINT(lane_number_of_vehicles);
+    //this should never be hit, error above should crash program beforehand
+    //this is here to make compiler happy and just in case so we can plan a safety net
+    return vehicle_;
+}
+
+//Spawn related code
 void Simulation::generateVehicle(uint32 number_)
 {
     path vehicle_path;
@@ -863,7 +1556,6 @@ void Simulation::generateVehicle(uint32 number_)
             break;
         default: SWERRINT(switch_placeholder);
     }
-    std::cout << number_ << std::endl;
     vehicle_list[number_] = new Car(number_, vehicle_path, my_intersection.getRoad(vehicle_direction)->getLane(lane_number), driver_type);
 
     if(simulation_params.print_simulation_events)
@@ -875,6 +1567,74 @@ void Simulation::generateVehicle(uint32 number_)
     my_intersection.getRoad(vehicle_list[number_]->vehicleDirection())->getLane(vehicle_list[number_]->laneNumber())->addToLane(number_);
 }
 
+bool Simulation::spawnVehicle()
+{
+    if(my_spawnTimer < 1)
+    {
+        return false;
+    }
+    else if(my_spawnTimer <= 5)
+    {
+        std::random_device root;
+        std::mt19937 spawn_chance(root());
+        double proability_percentage_per_second = simulation_params.spawn_density * pow((my_spawnTimer / 4), 2);
+        double absolute_probability_per_time_step = (proability_percentage_per_second / 100) * (simulation_params.time_step);
+        std::uniform_real_distribution<> probabiltity_distribution(0, 100);
+        double random_value = probabiltity_distribution(spawn_chance) * 1000; //*1000 since it is a precent
+        return random_value <= (absolute_probability_per_time_step * 100000); //*100000 since it is absolute
+    }
+    else
+    {
+        std::random_device root;
+        std::mt19937 spawn_chance(root());
+        std::uniform_real_distribution<> probabiltity_distribution(0, 100);
+        double random_value = probabiltity_distribution(spawn_chance) * 1000; //*1000 since it is a percent
+        return random_value <= simulation_params.spawn_density * 1000; //*1000 since it is also a percent
+    }
+}
+
+bool Simulation::collisionAnalysis()
+{
+    for(uint32 i = 0; i < my_vehiclesMade - 1; i++)
+    {
+        for(uint32 j = i + 1; j < my_vehiclesMade; j++)
+        {
+            if(!(vehicle_list[i]->isCompleted()) && !(vehicle_list[j]->isCompleted()))
+            {
+                if(vehicle_list[i]->collisionCheck(vehicle_list[j]))
+                {
+                    std::ofstream collision;
+                    std::string file_name = "./Output/CollisionInformation.txt";
+                    collision.open(file_name);
+                    collision << vehicle_list[i]->number() << "\t" << DRIVER_TYPE_STR[vehicle_list[i]->driverType()] << "\t";
+                    collision << DIRECTION_STR[vehicle_list[i]->vehicleDirection()] << "\t" << PATH_STR[vehicle_list[i]->vehiclePath()] << "\t" << VEHICLE_TYPE_STR[vehicle_list[i]->vehicleType()] << std::endl;
+                    collision << (int)vehicle_list[i]->currentState() << "\t" << vehicle_list[i]->currentPosition()[x] << "\t" << vehicle_list[i]->currentPosition()[y] << "\t";
+                    collision << vehicle_list[i]->currentVelocity()[x] << "\t" << vehicle_list[i]->currentVelocity()[y] << "\t";
+                    for (uint8 k = 0; k < TOTAL_POINTS; k++)
+                    {
+                        collision << vehicle_list[i]->exteriorPosition(k)[x] << "\t" << vehicle_list[i]->exteriorPosition(k)[y] << "\t";
+                    }
+                    collision << std::endl;
+
+                    collision << vehicle_list[j]->number() << "\t" << DRIVER_TYPE_STR[vehicle_list[j]->driverType()] << "\t";
+                    collision << DIRECTION_STR[vehicle_list[j]->vehicleDirection()] << "\t" << PATH_STR[vehicle_list[j]->vehiclePath()] << "\t" << VEHICLE_TYPE_STR[vehicle_list[j]->vehicleType()] << std::endl;
+                    collision << (int)vehicle_list[j]->currentState() << "\t" << vehicle_list[j]->currentPosition()[x] << "\t" << vehicle_list[j]->currentPosition()[y] << "\t";
+                    collision << vehicle_list[j]->currentVelocity()[x] << "\t" << vehicle_list[j]->currentVelocity()[y] << "\t";
+                    for (uint8 k = 0; k < TOTAL_POINTS; k++)
+                    {
+                        collision << vehicle_list[j]->exteriorPosition(k)[x] << "\t" << vehicle_list[j]->exteriorPosition(k)[y] << "\t";
+                    }
+                    collision << std::endl;
+                    collision.close();
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+//Vehicle List Code
 Vehicle* Simulation::vehicleAtIndex(uint32 index_)
 {
     try
@@ -962,6 +1722,7 @@ void Simulation::printResults()
 
     results.open("./Output/Results.txt");
     results << vehicle_list[0]->totalTime() << std::endl;
+    results << average_time_between_spawn / my_vehiclesMade << std::endl;
     results.close();
 }
 

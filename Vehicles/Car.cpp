@@ -28,6 +28,7 @@ Car::Car(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
     my_completionStatus = false;
     my_maxDeceleration = 7; //m/s (I looked it up and apparenly cars can usually decelerate this fast)
     my_accelerationMagnitude = 0;
+    my_currentSeparation = -1;
 
     my_stoplineCenter = -1; //for swerr purposes
 
