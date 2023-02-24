@@ -16,6 +16,8 @@ public:
     float reactionTime();
     float comfortableAcceleration();
     float comfortableDeceleration();
+    float minimumStoppingDistance();
+    float minimumFollowingDistance();
 protected:
     float generateComfortableDeceleration();
     float generateComfortableAcceleration();

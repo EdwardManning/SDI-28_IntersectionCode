@@ -38,6 +38,10 @@ const bool STOP = 0;
 const bool REMOVE = 0;
 const bool ADD = 1;
 
+//for vehicle lights
+const bool OFF = 0;
+const bool ON = 1;
+
 //for coordinates
 const bool x = 0;
 const bool y = 1;

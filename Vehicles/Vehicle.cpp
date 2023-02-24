@@ -69,7 +69,7 @@ bool Vehicle::accelerate()
     }
 
     bool dot = my_dot;
-    bool not_dot = dot ? x : y; //if dot is y then x, otherwise y
+    bool not_dot = !dot; //if dot is y then x, otherwise y
     
     float theta;
 
@@ -128,29 +128,59 @@ bool Vehicle::accelerate()
             my_currentVelocity[not_dot] -= my_currentAcceleration[not_dot] * simulation_params.time_step;
         }
         float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
-        if(velocity_magnitude >= my_maxSpeed)
-        {   
-            if (dot_positive)
-            {
-                my_currentVelocity[dot] =  my_maxSpeed * cos_theta;
+        if(my_targetSpeed == my_maxSpeed)
+        {
+            if(velocity_magnitude >= my_targetSpeed)
+            {   
+                if (dot_positive)
+                {
+                    my_currentVelocity[dot] =  my_maxSpeed * cos_theta;
+                }
+                else
+                {
+                    my_currentVelocity[dot] = -1 * my_maxSpeed * cos_theta;
+                }
+                if (not_dot_positive)
+                {
+                    my_currentVelocity[not_dot] =  my_maxSpeed * sin_theta;
+                }
+                else
+                {
+                    my_currentVelocity[not_dot] = -1 * my_maxSpeed * sin_theta;
+                }
+                my_accelerationMagnitude = 0;
+                my_currentAcceleration[dot] = 0;
+                my_currentAcceleration[not_dot] = 0;
+                accelerationComplete = true;
             }
-            else
-            {
-                my_currentVelocity[dot] = -1 * my_maxSpeed * cos_theta;
-            }
-            if (not_dot_positive)
-            {
-                my_currentVelocity[not_dot] =  my_maxSpeed * sin_theta;
-            }
-            else
-            {
-                my_currentVelocity[not_dot] = -1 * my_maxSpeed * sin_theta;
-            }
-            my_accelerationMagnitude = 0;
-            my_currentAcceleration[dot] = 0;
-            my_currentAcceleration[not_dot] = 0;
-            accelerationComplete = true;
         }
+        else
+        {
+            if(velocity_magnitude >= my_maxSpeed)
+            {   
+                if (dot_positive)
+                {
+                    my_currentVelocity[dot] =  my_targetSpeed * cos_theta;
+                }
+                else
+                {
+                    my_currentVelocity[dot] = -1 * my_targetSpeed * cos_theta;
+                }
+                if (not_dot_positive)
+                {
+                    my_currentVelocity[not_dot] =  my_targetSpeed * sin_theta;
+                }
+                else
+                {
+                    my_currentVelocity[not_dot] = -1 * my_targetSpeed * sin_theta;
+                }
+                my_accelerationMagnitude = 0;
+                my_currentAcceleration[dot] = 0;
+                my_currentAcceleration[not_dot] = 0;
+                accelerationComplete = true;
+            }
+        }
+        
     } 
     else if (my_state & DECELERATING)
     {
@@ -171,16 +201,44 @@ bool Vehicle::accelerate()
             my_currentVelocity[not_dot] += my_currentAcceleration[not_dot] * simulation_params.time_step;
         }
         float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
-        if((velocity_magnitude - my_accelerationMagnitude * simulation_params.time_step) <= 0)
+        if(my_targetSpeed == 0)
         {
-            my_currentVelocity[dot] = 0;
-            my_currentVelocity[not_dot] = 0;
-            my_accelerationMagnitude = 0;
-            my_currentAcceleration[dot] = 0;
-            my_currentAcceleration[not_dot] = 0;
-            accelerationComplete = true;
+            if((velocity_magnitude - my_accelerationMagnitude * simulation_params.time_step) <= 0)
+            {
+                my_currentVelocity[dot] = 0;
+                my_currentVelocity[not_dot] = 0;
+                my_accelerationMagnitude = 0;
+                my_currentAcceleration[dot] = 0;
+                my_currentAcceleration[not_dot] = 0;
+                accelerationComplete = true;
+            }
         }
-        
+        else
+        {
+            if((velocity_magnitude - my_accelerationMagnitude * simulation_params.time_step) <= my_targetSpeed)
+            {   
+                if (dot_positive)
+                {
+                    my_currentVelocity[dot] =  my_targetSpeed * cos_theta;
+                }
+                else
+                {
+                    my_currentVelocity[dot] = -1 * my_targetSpeed * cos_theta;
+                }
+                if (not_dot_positive)
+                {
+                    my_currentVelocity[not_dot] =  my_targetSpeed * sin_theta;
+                }
+                else
+                {
+                    my_currentVelocity[not_dot] = -1 * my_targetSpeed * sin_theta;
+                }
+                my_accelerationMagnitude = 0;
+                my_currentAcceleration[dot] = 0;
+                my_currentAcceleration[not_dot] = 0;
+                accelerationComplete = true;
+            }
+        } 
     }
     else
     {
@@ -194,32 +252,60 @@ void Vehicle::accelerate(float target_speed_)
 {
     bool dot = maxComponent(my_currentVelocity[x], my_currentVelocity[y]);
     float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
-    if(target_speed_ == 0)
+    if(target_speed_ == STOP)
     {
-        float distance_remaining = abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][dot]);
-        //this may need to be altered so that aggressive drivers vs standard drivers act differently
-        my_accelerationMagnitude = requiredAcceleration<float>(my_currentVelocity[dot], distance_remaining); 
+        if(!(my_state & IN_INTERSECTION))
+        {
+            float distance_remaining = abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][dot]);
+            //this may need to be altered so that aggressive drivers vs standard drivers act differently
+            my_accelerationMagnitude = requiredAcceleration<float>(my_currentVelocity[dot], distance_remaining); 
+        }
+        else
+        {   
+            if(my_direction == NORTH || my_direction == SOUTH)
+            {
+                my_accelerationMagnitude = requiredAcceleration<float>(my_currentVelocity[dot], ((intersection_params.ew_number_of_exits - 1) * intersection_params.lane_width));
+                if(my_accelerationMagnitude > my_maxDeceleration)
+                {
+                    my_accelerationMagnitude = my_maxDeceleration;
+                }
+            }
+            else
+            {
+                my_accelerationMagnitude = requiredAcceleration<float>(my_currentVelocity[dot], ((intersection_params.ns_number_of_exits - 1) * intersection_params.lane_width));
+                if(my_accelerationMagnitude > my_maxDeceleration)
+                {
+                    my_accelerationMagnitude = my_maxDeceleration;
+                }
+            }
+        }
         if(my_accelerationMagnitude < 0)
         {
             my_accelerationMagnitude *= -1;
         }
+        my_targetSpeed = STOP;
     }
-    else if (target_speed_ == my_maxSpeed)
+    else if (target_speed_ == my_maxSpeed && velocity_magnitude < my_maxSpeed)
     {
         my_accelerationMagnitude = my_driver->comfortableAcceleration();
+        my_targetSpeed = my_maxSpeed;
+    }
+    else if (target_speed_ == my_maxSpeed && velocity_magnitude > my_maxSpeed)
+    {
+        my_targetSpeed = my_maxSpeed;
+        my_accelerationMagnitude = my_driver->comfortableDeceleration();
     }
     else
     {
-        //these should not be used by non self driving vehicles
         if(target_speed_ > velocity_magnitude)
         {
-            SWERRFLOAT(target_speed_);
-            //my_accelerationMagnitude = my_driver->comfortableAcceleration();
+            my_targetSpeed = target_speed_;
+            my_accelerationMagnitude = my_driver->comfortableDeceleration();
         }
         else
         {
-            SWERRFLOAT(target_speed_);
-            //my_accelerationMagnitude = my_driver->comfortableDeceleration();
+            my_targetSpeed = target_speed_;
+            my_accelerationMagnitude = my_driver->comfortableDeceleration();
         }
     }
 }
@@ -484,7 +570,7 @@ void Vehicle::stopTurn(Lane* lane_)
 {
     float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
 
-    my_maxSpeed = lane_->speedLimit();
+    my_maxSpeed = my_driver->modifier() * lane_->speedLimit();
     my_dot = maxComponent<int8>(lane_->unitVector()[x], lane_->unitVector()[y]);
 
     my_currentVelocity[x] = velocity_magnitude * lane_->unitVector()[x];
@@ -497,7 +583,7 @@ bool Vehicle::collisionCheck(Vehicle* vehicle_)
 {
     //dot means direction of travel
     bool dot = maxComponent<float>(my_currentVelocity[x], my_currentVelocity[y]);
-    bool not_dot = dot ? x : y; //y is true so if dot is y then x, otherwise y
+    bool not_dot = !dot; //y is true so if dot is y then x, otherwise y
 
     for(uint8 i = 0; i < TOTAL_POINTS; i++)
     {
@@ -551,11 +637,26 @@ bool Vehicle::yellowLightAnalysis()
     return abs(stoppingDistance<float>(my_currentVelocity[my_dot], my_driver->comfortableDeceleration())) < abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][my_dot]);
 }
 
+bool Vehicle::yellowLightAnalysis(float current_acceleration_)
+{
+    //used if vehicle already slowing down due to proximity to other vehicle, or due to lane change
+    return ((abs(stoppingDistance<float>(my_currentVelocity[my_dot], my_driver->comfortableDeceleration())) < abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][my_dot])) &&
+            (my_driver->comfortableAcceleration() > current_acceleration_));
+}
+
 bool Vehicle::redLightAnalysis()
 {
     //only gets called before intersection
     //true causes slow down, false keeps going
     return abs(stoppingDistance<float>(my_currentVelocity[my_dot], my_maxDeceleration)) < abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][my_dot]);
+}
+
+bool Vehicle::redLightAnalysis(float current_acceleration_)
+{
+    //used if vehicle already slowing down due to proximity to other vehicle, or due to lane change
+    //second part of the statement should always be true but it is being tested anyways
+    return (abs(stoppingDistance<float>(my_currentVelocity[my_dot], my_maxDeceleration)) < abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][my_dot]) &&
+            (my_maxDeceleration > current_acceleration_));
 }
 
 /*
@@ -650,7 +751,7 @@ void Vehicle::draw(bool initialization_)
 {
     //dot means direction of travel
     bool dot = maxComponent<float>(my_currentVelocity[x], my_currentVelocity[y]);
-    bool not_dot = dot ? x : y; //if the direction of travel is true (y) then x is not 
+    bool not_dot = !dot; //if the direction of travel is true (y) then x is not 
     bool positive_dot = isPositive<float>(my_currentVelocity[dot]);
     
 
@@ -827,6 +928,133 @@ void Vehicle::updateUnitVector()
     }
 }
 
+bool Vehicle::checkImportantPosition(Vehicle* vehicle_)
+{
+    if(my_currentVelocity[my_dot] > 0)
+    {
+        return (vehicle_->exteriorPosition(FRONT_BUMPER)[my_dot] >= my_exteriorPosition[BACK_BUMPER][my_dot] &&
+                vehicle_->exteriorPosition(FRONT_BUMPER)[my_dot] <= my_exteriorPosition[FRONT_BUMPER][my_dot]) ||
+                (vehicle_->exteriorPosition(BACK_BUMPER)[my_dot] >= my_exteriorPosition[BACK_BUMPER][my_dot] &&
+                vehicle_->exteriorPosition(BACK_BUMPER)[my_dot] <= my_exteriorPosition[FRONT_BUMPER][my_dot]);
+    }
+    else
+    {
+        return (vehicle_->exteriorPosition(FRONT_BUMPER)[my_dot] <= my_exteriorPosition[BACK_BUMPER][my_dot] &&
+                vehicle_->exteriorPosition(FRONT_BUMPER)[my_dot] >= my_exteriorPosition[FRONT_BUMPER][my_dot]) ||
+                (vehicle_->exteriorPosition(BACK_BUMPER)[my_dot] <= my_exteriorPosition[BACK_BUMPER][my_dot] &&
+                vehicle_->exteriorPosition(BACK_BUMPER)[my_dot] >= my_exteriorPosition[FRONT_BUMPER][my_dot]);
+    }
+}
+
+void Vehicle::requestAccelerationAdjustment(float adjustment_, bool is_positive_)
+{
+    if(is_positive_)
+    {
+        if(my_state & ACCELERATING)
+        {
+            if(my_accelerationMagnitude + adjustment_ > (my_driver->comfortableAcceleration() * 2))
+            {
+                adjustAccelerationMagnitude(my_driver->comfortableAcceleration() * 2);
+            }
+            else
+            {
+                adjustAccelerationMagnitude(adjustment_, is_positive_);
+            }
+        }
+        else
+        {
+            if(my_accelerationMagnitude + adjustment_ > (my_maxDeceleration))
+            {
+                adjustAccelerationMagnitude(my_maxDeceleration);
+            }
+            else
+            {
+                adjustAccelerationMagnitude(adjustment_, is_positive_);
+            }
+        }
+    }
+    else
+    {
+        if(my_accelerationMagnitude - adjustment_ <= 0)
+        {
+            return;
+        }
+        else
+        {
+            adjustAccelerationMagnitude(adjustment_, is_positive_);
+        }
+    }
+}
+
+void Vehicle::adjustAccelerationMagnitude(float adjustment_, bool is_positive_)
+{
+    if(is_positive_)
+    {
+        my_accelerationMagnitude += adjustment_;
+    }
+    else
+    {
+        my_accelerationMagnitude -= adjustment_;
+    }
+}
+
+void Vehicle::adjustAccelerationMagnitude(float acceleration_magnitude_)
+{
+    my_accelerationMagnitude = acceleration_magnitude_;
+}
+
+void Vehicle::setMaxSpeed(float new_max_speed_)
+{
+    my_maxSpeed = new_max_speed_;
+}
+
+void Vehicle::setCurrentSeparation(float separation_)
+{
+    my_currentSeparation = separation_;
+}
+
+void Vehicle::toggleBlinker(path direction_, bool on_)
+{
+    if(direction_ == LEFT)
+    {
+        if(my_blinker[0] != on_)
+        {
+            my_blinker[0] = on_;
+        }
+        else
+        {
+            SWERRINT(my_blinker[0]);
+        }
+    }
+    else if(direction_ == RIGHT)
+    {
+        if(my_blinker[1] != on_)
+        {
+            my_blinker[1] = on_;
+        }
+        else
+        {
+            SWERRINT(my_blinker[1]);
+        }
+    }
+    else
+    {
+        SWERRINT(direction_);
+    }
+}
+
+void Vehicle::toggleBrakeLights(bool on_)
+{
+    if(my_brakeLights != on_)
+    {
+        my_brakeLights = on_;
+    }
+    else
+    {
+        SWERRINT(my_brakeLights);
+    }
+}
+
 //Printing funtions, no need for explanation
 //They print things
 void Vehicle::printStartingInformation()
@@ -946,6 +1174,11 @@ float* Vehicle::exteriorPosition(vehiclePoints vehicle_point_)
     return my_exteriorPosition[vehicle_point_];
 }
 
+float* Vehicle::exteriorPosition(uint8 vehicle_point_)
+{
+    return my_exteriorPosition[vehicle_point_];
+}
+
 bool Vehicle::isCompleted()
 {
     return my_completionStatus;
@@ -954,4 +1187,51 @@ bool Vehicle::isCompleted()
 float Vehicle::currentAccelerationMagnitude()
 {
     return my_accelerationMagnitude;
+}
+
+int8* Vehicle::unitVector()
+{
+    return my_unitVector;
+}
+
+bool Vehicle::blinker(path direction_)
+{
+    if (direction_ == LEFT)
+    {
+        return my_blinker[0];
+    }
+    else if(direction_ == RIGHT)
+    {
+        return my_blinker[1];
+    }
+    else
+    {
+        SWERRINT(direction_);
+    }
+    return my_blinker[0];
+}
+
+bool Vehicle::blinker(bool direction_)
+{
+    return my_blinker[direction_];
+}
+
+bool Vehicle::brakeLights()
+{
+    return my_brakeLights;
+}
+
+float Vehicle::mimumumStoppingDistance()
+{
+    return my_driver->minimumStoppingDistance();
+}
+
+float Vehicle::minimumFollowingDistance()
+{
+    return my_driver->minimumFollowingDistance();
+}
+
+float Vehicle::currentSeparation()
+{
+    return my_currentSeparation;
 }

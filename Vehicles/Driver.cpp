@@ -141,3 +141,13 @@ float Driver::comfortableDeceleration()
 {
     return my_comfortableDeceleration;
 }
+
+float Driver::minimumFollowingDistance()
+{
+    return my_minFollowingDistance;
+}
+
+float Driver::minimumStoppingDistance()
+{
+    return my_minStopDistance;
+}
