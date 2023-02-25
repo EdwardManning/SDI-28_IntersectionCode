@@ -43,6 +43,10 @@ void Vehicle::drive()
     }
     else
     {
+        //we are stopped, this can be caused by low velocity in Simulation::run()
+        //which means we may need to set the velocity to 0
+        my_currentVelocity[x] = 0;
+        my_currentVelocity[y] = 0;
         my_stopTime += simulation_params.time_step;
     }
     draw();
@@ -156,7 +160,7 @@ bool Vehicle::accelerate()
         }
         else
         {
-            if(velocity_magnitude >= my_maxSpeed)
+            if(velocity_magnitude >= my_targetSpeed)
             {   
                 if (dot_positive)
                 {
@@ -305,7 +309,7 @@ void Vehicle::accelerate(float target_speed_)
         else
         {
             my_targetSpeed = target_speed_;
-            my_accelerationMagnitude = my_driver->comfortableDeceleration();
+            my_accelerationMagnitude = my_driver->comfortableAcceleration();
         }
     }
 }
@@ -1079,6 +1083,10 @@ void Vehicle::printStep()
     {
         info << "\t" << my_currentVelocity[x] << "\t" << my_currentVelocity[y] << "\t";
     }
+    if(vehicle_params.print_accelerations)
+    {
+        info << "\t" << my_accelerationMagnitude<< "\t" << my_currentAcceleration[x] << "\t" << my_currentAcceleration[y] << "\t";
+    }
     if(vehicle_params.print_exterior_coordinates)
     {
         for(uint8 i = 0; i < TOTAL_POINTS; i++)
@@ -1167,6 +1175,11 @@ float Vehicle::timeInIntersection()
 float Vehicle::totalTime()
 {
     return my_totalTime;
+}
+
+float Vehicle::timeStopped()
+{
+    return my_stopTime;
 }
 
 float* Vehicle::exteriorPosition(vehiclePoints vehicle_point_)

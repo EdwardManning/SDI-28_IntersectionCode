@@ -272,6 +272,24 @@ static vehiclePoints getVehiclePoint(uint8 value)
     return FRONT_LEFT;
 }
 
+enum averages
+{
+    TIME_THROUGH_INTERSECTION,
+    TIME_IN_INTERSECTION,
+    TIME_STOPPED,
+    TIME_BETWEEN_SPAWNS,
+    TOTAL_AVERAGES,
+};
+
+const std::string AVERAGE_STR[]
+{
+    "Time Through Intersection",
+    "Time In Intersection",
+    "Time Stopped",
+    "Time Between Spawns",
+    "Total Averages",
+};
+
 //direction vectors to set lane velocity modifiers
 //will be used by vehicles to initialize velocity
 //Note: direction in title relates to direction travelling not direction coming from

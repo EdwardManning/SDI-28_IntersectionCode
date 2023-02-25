@@ -37,6 +37,7 @@ private:
     bool spawnVehicle();
     bool shoulderCheck(Vehicle* vehicle_, path lane_change_direction_);
     bool collisionAnalysis();
+    void calculateAverages();
 
     //acceleration code
     void determineAcceleration(Vehicle* vehicle_);
@@ -51,6 +52,7 @@ private:
     bool maxSpeedDecelerationRequired(Vehicle* vehicle_);
     void startAcceleration(Vehicle* vehicle_, float target_speed_);
     void startDeceleration(Vehicle* vehicle_, float target_speed_);
+    void changeDeceleration(Vehicle* vehicle_, float target_speed_);
     bool checkLaneBlinkers(Vehicle* vehicle_, Lane* lane_, int8 direction_);
     bool scanAhead(Vehicle* vehicle_);
     bool checkIntersectionClear(Vehicle* vehicle_);
@@ -82,6 +84,7 @@ private:
 
     //averages
     float average_time_between_spawn;
+    float averages[TOTAL_AVERAGES];
 
     Vehicle** vehicle_list; //list of all vehicles (active and inactive)
     std::vector<Vehicle*> active_vehicles;

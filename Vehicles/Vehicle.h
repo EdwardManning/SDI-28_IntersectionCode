@@ -56,6 +56,7 @@ public:
     uint8 maxSpeed();
     float timeInIntersection();
     float totalTime();
+    float timeStopped();
     float* exteriorPosition(vehiclePoints vehicle_point_);
     float* exteriorPosition(uint8 vehicle_point_);
     bool isCompleted();
