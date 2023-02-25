@@ -20,8 +20,11 @@ Simulation::Simulation()
         events << "No Event Printing" << std::endl;
     }
     my_vehiclesMade = 0;
+    for(uint8 i = 0; i < simulation_params.number_of_vehicles; i++)
+    {
+        averages[i] = 0;
+    }
     vehicle_list = new Vehicle*[simulation_params.number_of_vehicles];
-    average_time_between_spawn = 0;
     generateVehicle(my_vehiclesMade);
     my_vehiclesMade++;
     my_spawnTimer = 0;
@@ -42,7 +45,6 @@ Simulation::Simulation()
 */
 Simulation::~Simulation()
 {
-    printResults();
     events.close();
 }
 
@@ -99,7 +101,7 @@ void Simulation::run()
             {
                 generateVehicle(my_vehiclesMade);
                 my_vehiclesMade++;
-                average_time_between_spawn += my_spawnTimer;
+                averages[TIME_BETWEEN_SPAWNS] += my_spawnTimer;
                 my_spawnTimer = 0;
             }
             else
@@ -125,10 +127,10 @@ void Simulation::run()
 */
 bool Simulation::completionCheck()
 {
-    if(collisionAnalysis()) //collision happened
-    {
-        return true;
-    }
+    // if(collisionAnalysis()) //collision happened
+    // {
+    //     return true;
+    // }
     if(my_vehiclesMade < simulation_params.number_of_vehicles)
     {
         return false;
@@ -142,6 +144,10 @@ bool Simulation::completionCheck()
             {
                 return_value = false;
             }
+        }
+        if(return_value)
+        {
+            printResults();
         }
         return return_value;
     }
@@ -297,6 +303,12 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
                 SWERRINT(vehicle_->currentState());
             }
         }
+    }
+    if((MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) < 0.005) &&
+       (vehicle_->currentState() & DECELERATING))
+    {
+        changeState(vehicle_, DRIVING, REMOVE);
+        changeState(vehicle_, DECELERATING, REMOVE);
     }
     vehicle_->drive();
 }
@@ -922,8 +934,8 @@ bool Simulation::inIntersectionCloseDecelerationRequired(Vehicle* vehicle_)
         }
         else
         {
-            //increase deceleration by 0.5m/s^2
-            vehicle_->requestAccelerationAdjustment(0.5);
+            float target_speed = 0.95 * MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+            changeDeceleration(vehicle_, target_speed);
         }
         return true;
     }
@@ -1131,6 +1143,22 @@ void Simulation::startDeceleration(Vehicle* vehicle_, float target_speed_)
     }
 }
 
+void Simulation::changeDeceleration(Vehicle* vehicle_, float target_speed_)
+{
+    //this is used when we are already decelerating to decelerate to a new target speed
+    if(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) > target_speed_)
+    {
+        if(vehicle_->currentState() & DECELERATING)
+        {   
+            vehicle_->accelerate(target_speed_);
+            if (!(vehicle_->currentAccelerationMagnitude() > 0))
+            {
+                SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
+            }
+        }
+    }
+}
+
 bool Simulation::checkLaneBlinkers(Vehicle* vehicle_, Lane* lane_, int8 direction_)
 {
     if(lane_->numberOfVehicles() < 1)
@@ -1201,6 +1229,7 @@ bool Simulation::scanAhead(Vehicle* vehicle_)
                 }
             }
         }
+        return false;
     }
     else
     {
@@ -1268,6 +1297,7 @@ bool Simulation::scanAhead(Vehicle* vehicle_)
                 }
             }
         }
+        return false;
     }
     return false;
 }
@@ -1706,6 +1736,36 @@ bool Simulation::removeFromActiveVehicles(Vehicle* vehicle_)
     }
 }
 
+void Simulation::calculateAverages()
+{
+    for (uint8 i = 0; i < TOTAL_AVERAGES; i++)
+    {
+        for(uint32 j = 0; j < simulation_params.number_of_vehicles; j++)
+        {
+            switch(i)
+            {
+                case(TIME_THROUGH_INTERSECTION): averages[i] += vehicle_list[j]->totalTime();
+                    break;
+                case(TIME_IN_INTERSECTION): averages[i] += vehicle_list[j]->timeInIntersection();
+                    break;
+                case(TIME_STOPPED): averages[i] += vehicle_list[j]->timeStopped();
+                    break;
+                case(TIME_BETWEEN_SPAWNS): continue; //already calculated
+                    break;
+                default: SWERRINT(i);
+            }
+        }
+        if(i == TIME_BETWEEN_SPAWNS)
+        {
+            averages[i] /= my_vehiclesMade;
+        }
+        else
+        {  
+            averages[i] /= simulation_params.number_of_vehicles;
+        }
+    }
+}
+
 //Printing funtions, no need for explanation
 //They print things
 void Simulation::printCompletion(Vehicle* vehicle_)
@@ -1719,10 +1779,12 @@ void Simulation::printResults()
     //multiple vehicles has been added in
     //should eventually display average times for various
     //actions
-
+    calculateAverages();
     results.open("./Output/Results.txt");
-    results << vehicle_list[0]->totalTime() << std::endl;
-    results << average_time_between_spawn / my_vehiclesMade << std::endl;
+    for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
+    {
+        results << AVERAGE_STR[i] << ":\t" << averages[i] << std::endl; 
+    }
     results.close();
 }
 
