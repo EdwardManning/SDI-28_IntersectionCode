@@ -274,17 +274,19 @@ static vehiclePoints getVehiclePoint(uint8 value)
 
 enum averages
 {
-    TIME_THROUGH_INTERSECTION,
-    TIME_IN_INTERSECTION,
-    TIME_STOPPED,
-    TIME_BETWEEN_SPAWNS,
-    TOTAL_AVERAGES,
+    TIME_THROUGH_INTERSECTION, //0
+    TIME_IN_INTERSECTION,      //1
+    TIME_AT_MAX_SPEED,         //2
+    TIME_STOPPED,              //3
+    TIME_BETWEEN_SPAWNS,       //4
+    TOTAL_AVERAGES,            //5
 };
 
 const std::string AVERAGE_STR[]
 {
     "Time Through Intersection",
     "Time In Intersection",
+    "Time At Max Speed",
     "Time Stopped",
     "Time Between Spawns",
     "Total Averages",

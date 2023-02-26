@@ -25,6 +25,7 @@ Car::Car(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
     my_timeInIntersection = 0;
     my_totalTime = 0;
     my_stopTime = 0;
+    my_timeAtMaxSpeed = 0;
     my_completionStatus = false;
     my_maxDeceleration = 7; //m/s (I looked it up and apparenly cars can usually decelerate this fast)
     my_accelerationMagnitude = 0;

@@ -57,6 +57,7 @@ public:
     float timeInIntersection();
     float totalTime();
     float timeStopped();
+    float timeAtMaxSpeed();
     float* exteriorPosition(vehiclePoints vehicle_point_);
     float* exteriorPosition(uint8 vehicle_point_);
     bool isCompleted();
@@ -101,6 +102,7 @@ protected:
     float my_timeInIntersection; //the amount of time spent in the intersection
     float my_totalTime; //the amount of time it took to fully clear the intersection
     float my_stopTime; //the amount of time spent stopped
+    float my_timeAtMaxSpeed; //time spent at maximum speed
     modifier my_modifier[2]; //the modifier used to turn if necessary
     float my_turnRadius[2]; //the radius of the turn if necessary
     float my_stopline; //the end of the starting road

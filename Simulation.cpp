@@ -20,7 +20,7 @@ Simulation::Simulation()
         events << "No Event Printing" << std::endl;
     }
     my_vehiclesMade = 0;
-    for(uint8 i = 0; i < simulation_params.number_of_vehicles; i++)
+    for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
     {
         averages[i] = 0;
     }
@@ -63,7 +63,7 @@ Simulation::~Simulation()
 void Simulation::run()
 {
     //debugIntersection();
-    while(!completionCheck() && elapsed_time < 1000000)
+    while(!completionCheck())
     {   
         for(uint32 i = 0; i < active_vehicles.size(); i++)
         {
@@ -127,10 +127,10 @@ void Simulation::run()
 */
 bool Simulation::completionCheck()
 {
-    // if(collisionAnalysis()) //collision happened
-    // {
-    //     return true;
-    // }
+    if(collisionAnalysis()) //collision happened
+    {
+        return true;
+    }
     if(my_vehiclesMade < simulation_params.number_of_vehicles)
     {
         return false;
@@ -1200,7 +1200,7 @@ bool Simulation::scanAhead(Vehicle* vehicle_)
 {
     if(my_intersection.numberOfVehicles() <= 1)
     {
-        return true;
+        return false;
     }
     float scan_distance = vehicle_->minimumFollowingDistance();
     bool dot = maxComponent<float>(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
@@ -1747,6 +1747,8 @@ void Simulation::calculateAverages()
                 case(TIME_THROUGH_INTERSECTION): averages[i] += vehicle_list[j]->totalTime();
                     break;
                 case(TIME_IN_INTERSECTION): averages[i] += vehicle_list[j]->timeInIntersection();
+                    break;
+                case(TIME_AT_MAX_SPEED): averages[i] += vehicle_list[j]->timeAtMaxSpeed();
                     break;
                 case(TIME_STOPPED): averages[i] += vehicle_list[j]->timeStopped();
                     break;
