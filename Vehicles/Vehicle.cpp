@@ -40,6 +40,10 @@ void Vehicle::drive()
     {
         my_currentPosition[x] += my_currentVelocity[x] * simulation_params.time_step;
         my_currentPosition[y] += my_currentVelocity[y] * simulation_params.time_step;
+        if (MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]) == my_maxSpeed)
+        {
+            my_timeAtMaxSpeed += simulation_params.time_step;
+        }
     }
     else
     {
@@ -1180,6 +1184,11 @@ float Vehicle::totalTime()
 float Vehicle::timeStopped()
 {
     return my_stopTime;
+}
+
+float Vehicle::timeAtMaxSpeed()
+{
+    return my_timeAtMaxSpeed;
 }
 
 float* Vehicle::exteriorPosition(vehiclePoints vehicle_point_)
