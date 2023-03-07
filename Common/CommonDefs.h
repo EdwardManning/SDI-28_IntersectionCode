@@ -292,6 +292,26 @@ const std::string AVERAGE_STR[]
     "Total Averages",
 };
 
+enum severity
+{
+    LOW,        //0
+    MINOR,      //1
+    MEDIUM,     //2
+    MODERATE,   //3
+    HIGH,       //4
+    FATAL,      //5
+};
+
+const std::string SEVERITY_STR[]
+{
+    "LOW",
+    "MINOR",
+    "MEDIUM",
+    "MODERATE",
+    "HIGH",
+    "FATAL",
+};
+
 //direction vectors to set lane velocity modifiers
 //will be used by vehicles to initialize velocity
 //Note: direction in title relates to direction travelling not direction coming from
@@ -329,6 +349,44 @@ static float negative_cos(float period)
 static float negative_sin(float period)
 {
     return -1 * sin(period);
+}
+
+//these may be necessary in replacing maxComponent (abs() isn't working)
+static bool findComponent(float first_point_[2], float second_point_[2])
+{
+    float delta_x, delta_y;
+
+    delta_x = first_point_[x] - second_point_[x];
+    if (delta_x < 0)
+    {
+        delta_x *= -1;
+    }
+
+    delta_y = first_point_[y] - second_point_[y];
+    if (delta_y < 0)
+    {
+        delta_y *= -1;
+    }
+
+    return delta_y > delta_x;
+}
+
+static bool findComponent(float first_value_, float second_value_)
+{
+    if(first_value_ < 0)
+    {
+        first_value_ *= -1;
+    }
+    if (second_value_ < 0)
+    {
+        second_value_ *= -1;
+    }
+    return second_value_ > first_value_;
+}
+
+static float neededAcceleration(float current_velocity_, float distance)
+{
+    return (-1 * current_velocity_ * current_velocity_) / (2 * distance);
 }
 
 //magnitude of a vector

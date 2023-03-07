@@ -27,6 +27,7 @@ public:
     void drive();
     bool accelerate();
     void accelerate(float target_speed_);
+    void accelerate(float target_speed_, float distance_remaining_);
     void changeLane(path direction_);
     void stopLaneChange();
     bool correctLane(Lane* lane_, bool initialization_ = false);
@@ -79,6 +80,7 @@ public:
     void requestAccelerationAdjustment(float adjustment_, bool is_positive_ = true);
 protected:
     void draw(bool initialization_ = false);
+    void draw(float value);
     void updateUnitVector();
     void adjustAccelerationMagnitude(float adjustment_, bool is_positive_);
     void adjustAccelerationMagnitude(float acceleration_magnitude_);
