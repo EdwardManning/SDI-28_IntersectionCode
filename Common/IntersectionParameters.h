@@ -31,7 +31,7 @@ public:
     //ns light parameters
     uint8 ns_green_time = 15;
     uint8 ns_yellow_time = 3;
-    uint8 ns_red_overlap_time = 2;
+    uint8 ns_red_overlap_time = 4;
     bool n_advanced_green = false;
     bool s_advanced_green = false;
     uint8 ns_advanced_green_time = 6;
@@ -40,7 +40,7 @@ public:
     //ew light parameters
     uint8 ew_green_time = 15;
     uint8 ew_yellow_time = 3;
-    uint8 ew_red_overlap_time = 2;
+    uint8 ew_red_overlap_time = 4;
     bool e_advanced_green = false;
     bool w_advanced_green = false;
     uint8 ew_advanced_green_time = 6;

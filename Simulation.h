@@ -38,6 +38,8 @@ private:
     bool shoulderCheck(Vehicle* vehicle_, path lane_change_direction_);
     bool collisionAnalysis();
     void calculateAverages();
+    severity calculateCollisionSeverity(Vehicle* first_vehicle_, Vehicle* second_vehicle_);
+    direction opposingDirection(direction direction_);
 
     //acceleration code
     void determineAcceleration(Vehicle* vehicle_);
@@ -52,9 +54,12 @@ private:
     bool maxSpeedDecelerationRequired(Vehicle* vehicle_);
     void startAcceleration(Vehicle* vehicle_, float target_speed_);
     void startDeceleration(Vehicle* vehicle_, float target_speed_);
+    void startDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_);
     void changeDeceleration(Vehicle* vehicle_, float target_speed_);
+    void changeDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_);
     bool checkLaneBlinkers(Vehicle* vehicle_, Lane* lane_, int8 direction_);
     bool scanAhead(Vehicle* vehicle_);
+    bool preIntersectionScanAhead(Vehicle* vehicle_);
     bool checkIntersectionClear(Vehicle* vehicle_);
     bool conflictingPaths(Vehicle* current_vehicle_, Vehicle* test_vehicle_);
     bool vehicleAhead(Vehicle* vehicle_, bool through_intersection_);
@@ -74,6 +79,7 @@ private:
     void printLaneChange(Vehicle* vehicle_, uint8 new_lane_);
     void printTrafficLightStateChange(TrafficLight* traffic_light_);
     void printVehicleArrival(Vehicle* vehicle_);
+    void printCollisionInformation(Vehicle* first_vehicle_, Vehicle* second_vehicle_);
     
     bool light_change_occured;
     uint32 my_vehiclesMade;

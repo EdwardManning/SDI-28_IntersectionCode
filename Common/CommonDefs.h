@@ -292,6 +292,26 @@ const std::string AVERAGE_STR[]
     "Total Averages",
 };
 
+enum severity
+{
+    LOW,        //0
+    MINOR,      //1
+    MEDIUM,     //2
+    MODERATE,   //3
+    HIGH,       //4
+    FATAL,      //5
+};
+
+const std::string SEVERITY_STR[]
+{
+    "LOW",
+    "MINOR",
+    "MEDIUM",
+    "MODERATE",
+    "HIGH",
+    "FATAL",
+};
+
 //direction vectors to set lane velocity modifiers
 //will be used by vehicles to initialize velocity
 //Note: direction in title relates to direction travelling not direction coming from
