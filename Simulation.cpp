@@ -1633,29 +1633,7 @@ bool Simulation::collisionAnalysis()
             {
                 if(vehicle_list[i]->collisionCheck(vehicle_list[j]))
                 {
-                    std::ofstream collision;
-                    std::string file_name = "./Output/CollisionInformation.txt";
-                    collision.open(file_name);
-                    collision << vehicle_list[i]->number() << "\t" << DRIVER_TYPE_STR[vehicle_list[i]->driverType()] << "\t";
-                    collision << DIRECTION_STR[vehicle_list[i]->vehicleDirection()] << "\t" << PATH_STR[vehicle_list[i]->vehiclePath()] << "\t" << VEHICLE_TYPE_STR[vehicle_list[i]->vehicleType()] << std::endl;
-                    collision << (int)vehicle_list[i]->currentState() << "\t" << vehicle_list[i]->currentPosition()[x] << "\t" << vehicle_list[i]->currentPosition()[y] << "\t";
-                    collision << vehicle_list[i]->currentVelocity()[x] << "\t" << vehicle_list[i]->currentVelocity()[y] << "\t";
-                    for (uint8 k = 0; k < TOTAL_POINTS; k++)
-                    {
-                        collision << vehicle_list[i]->exteriorPosition(k)[x] << "\t" << vehicle_list[i]->exteriorPosition(k)[y] << "\t";
-                    }
-                    collision << std::endl;
-
-                    collision << vehicle_list[j]->number() << "\t" << DRIVER_TYPE_STR[vehicle_list[j]->driverType()] << "\t";
-                    collision << DIRECTION_STR[vehicle_list[j]->vehicleDirection()] << "\t" << PATH_STR[vehicle_list[j]->vehiclePath()] << "\t" << VEHICLE_TYPE_STR[vehicle_list[j]->vehicleType()] << std::endl;
-                    collision << (int)vehicle_list[j]->currentState() << "\t" << vehicle_list[j]->currentPosition()[x] << "\t" << vehicle_list[j]->currentPosition()[y] << "\t";
-                    collision << vehicle_list[j]->currentVelocity()[x] << "\t" << vehicle_list[j]->currentVelocity()[y] << "\t";
-                    for (uint8 k = 0; k < TOTAL_POINTS; k++)
-                    {
-                        collision << vehicle_list[j]->exteriorPosition(k)[x] << "\t" << vehicle_list[j]->exteriorPosition(k)[y] << "\t";
-                    }
-                    collision << std::endl;
-                    collision.close();
+                    printCollisionInformation(vehicle_list[i], vehicle_list[j]);
                     return true;
                 }
             }
@@ -1768,6 +1746,51 @@ void Simulation::calculateAverages()
     }
 }
 
+severity Simulation::calculateCollisionSeverity(Vehicle* first_vehicle_, Vehicle* second_vehicle_)
+{
+    float x_velocity_difference = second_vehicle_->currentVelocity()[x] - first_vehicle_->currentVelocity()[x];
+    float y_velocity_difference = second_vehicle_->currentVelocity()[y] - first_vehicle_->currentVelocity()[y];
+
+    float velocity_difference = MAGNITUDE(x_velocity_difference, y_velocity_difference);
+
+    if (velocity_difference >= 60)
+    {
+        //this is a head on collision on a 400 series highway
+        //corresponds to probable death
+        return FATAL;
+    }
+    else if( velocity_difference >= 50)
+    {
+        //this is a head on collision on a non-400 series highway
+        //corresponds to serious injury or death
+        return HIGH;
+    }
+    else if(velocity_difference >= 40)
+    {
+        //this is a head on collision on a high speed limit regular road
+        //corresponds to moderate or severe injury
+        return MODERATE;
+    }
+    else if (velocity_difference >= 30)
+    {
+        //this is a head on collision on a standard road
+        //corresponds to minor or moderate injury
+        return MEDIUM;
+    }
+    else if(velocity_difference >= 15)
+    {
+        //this is a head on collision at low speed
+        //corresponds to no injury or minor injury
+        return MINOR;
+    }
+    else
+    {
+        //this is a fender bender
+        //corresponds to no injury
+        return LOW;
+    }
+}
+
 //Printing funtions, no need for explanation
 //They print things
 void Simulation::printCompletion(Vehicle* vehicle_)
@@ -1803,4 +1826,37 @@ void Simulation::printTrafficLightStateChange(TrafficLight* traffic_light_)
 void Simulation::printVehicleArrival(Vehicle* vehicle_)
 {
     events << elapsed_time << " Vehicle " << vehicle_->name() << " has arrived from " << DIRECTION_STR[vehicle_->vehicleDirection()] << " heading " << PATH_STR[vehicle_->vehiclePath()] << std::endl;
+}
+
+void Simulation::printCollisionInformation(Vehicle* first_vehicle_, Vehicle* second_vehicle_)
+{
+    std::ofstream collision;
+    std::string file_name = "./Output/CollisionInformation.txt";
+    collision.open(file_name);
+
+    collision << first_vehicle_->number() << "\t" << DRIVER_TYPE_STR[first_vehicle_->driverType()] << "\t";
+    collision << DIRECTION_STR[first_vehicle_->vehicleDirection()] << "\t" << PATH_STR[first_vehicle_->vehiclePath()] << "\t" << VEHICLE_TYPE_STR[first_vehicle_->vehicleType()] << std::endl;
+    collision << (int)first_vehicle_->currentState() << "\t" << first_vehicle_->currentPosition()[x] << "\t" << first_vehicle_->currentPosition()[y] << "\t";
+    collision << first_vehicle_->currentVelocity()[x] << "\t" << first_vehicle_->currentVelocity()[y] << "\t";
+    for (uint8 k = 0; k < TOTAL_POINTS; k++)
+    {
+        collision << first_vehicle_->exteriorPosition(k)[x] << "\t" << first_vehicle_->exteriorPosition(k)[y] << "\t";
+    }
+    collision << std::endl;
+
+    collision << second_vehicle_->number() << "\t" << DRIVER_TYPE_STR[second_vehicle_->driverType()] << "\t";
+    collision << DIRECTION_STR[second_vehicle_->vehicleDirection()] << "\t" << PATH_STR[second_vehicle_->vehiclePath()] << "\t" << VEHICLE_TYPE_STR[second_vehicle_->vehicleType()] << std::endl;
+    collision << (int)second_vehicle_->currentState() << "\t" << second_vehicle_->currentPosition()[x] << "\t" << second_vehicle_->currentPosition()[y] << "\t";
+    collision << second_vehicle_->currentVelocity()[x] << "\t" << second_vehicle_->currentVelocity()[y] << "\t";
+    for (uint8 k = 0; k < TOTAL_POINTS; k++)
+    {
+        collision << second_vehicle_->exteriorPosition(k)[x] << "\t" << second_vehicle_->exteriorPosition(k)[y] << "\t";
+    }
+    collision << std::endl << std::endl << std::endl;
+
+    collision << "*******************************************************" << std::endl;
+    collision << "Severity: " << SEVERITY_STR[calculateCollisionSeverity(first_vehicle_, second_vehicle_)] << std::endl;
+    collision << "*******************************************************" << std::endl;
+
+    collision.close();
 }

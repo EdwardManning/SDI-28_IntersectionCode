@@ -318,6 +318,26 @@ void Vehicle::accelerate(float target_speed_)
     }
 }
 
+void Vehicle::accelerate(float target_speed_, float distance_remaining_)
+{
+    bool dot = maxComponent(my_currentVelocity[x], my_currentVelocity[y]);
+    float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+    if(!(my_state & IN_INTERSECTION))
+    {
+        //this may need to be altered so that aggressive drivers vs standard drivers act differently
+        my_accelerationMagnitude = requiredAcceleration<float>(my_currentVelocity[dot], distance_remaining_); 
+        if(my_accelerationMagnitude < 0)
+        {
+            my_accelerationMagnitude *= -1;
+        }
+        my_targetSpeed = STOP;
+    }
+    else
+    {
+        SWERRINT(my_state);
+    }
+}
+
 /*
 *   Name: changeLane
 *
@@ -1104,9 +1124,9 @@ void Vehicle::printStep()
 void Vehicle::printFinalInformation()
 {
     info << std::endl;
-    info << "****************************************" << std::endl;
-    info << my_totalTime << "\t" << my_timeInIntersection << "\t" << my_stopTime << std::endl;
-    info << "****************************************" << std::endl;
+    info << "*******************************************************" << std::endl;
+    info << my_totalTime << "\t" << my_timeInIntersection << "\t" << my_timeAtMaxSpeed << "\t" << my_stopTime << std::endl;
+    info << "*******************************************************" << std::endl;
 }
 //The following functions are used to access the values of the 
 //protected members. They all return the variable of the same name
