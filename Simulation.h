@@ -38,6 +38,7 @@ private:
     bool shoulderCheck(Vehicle* vehicle_, path lane_change_direction_);
     bool collisionAnalysis();
     void calculateAverages();
+    severity calculateCollisionSeverity(Vehicle* first_vehicle_, Vehicle* second_vehicle_);
 
     //acceleration code
     void determineAcceleration(Vehicle* vehicle_);
@@ -74,6 +75,7 @@ private:
     void printLaneChange(Vehicle* vehicle_, uint8 new_lane_);
     void printTrafficLightStateChange(TrafficLight* traffic_light_);
     void printVehicleArrival(Vehicle* vehicle_);
+    void printCollisionInformation(Vehicle* first_vehicle_, Vehicle* second_vehicle_);
     
     bool light_change_occured;
     uint32 my_vehiclesMade;

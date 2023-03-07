@@ -9,7 +9,7 @@ public:
     uint8 vehicle_length = 6;
     uint8 vehicle_width = 2;
     bool print_velocieties;
-    bool print_exterior_coordinates;
     bool print_accelerations;
+    bool print_exterior_coordinates;
 private:
 };

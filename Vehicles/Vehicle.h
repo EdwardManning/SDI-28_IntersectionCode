@@ -27,6 +27,7 @@ public:
     void drive();
     bool accelerate();
     void accelerate(float target_speed_);
+    void accelerate(float target_speed_, float distance_remaining_);
     void changeLane(path direction_);
     void stopLaneChange();
     bool correctLane(Lane* lane_, bool initialization_ = false);
