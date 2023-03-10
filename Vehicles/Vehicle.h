@@ -27,7 +27,7 @@ public:
     void drive();
     bool accelerate();
     void accelerate(float target_speed_);
-    void accelerate(float target_speed_, float distance_remaining_);
+    bool accelerate(float target_speed_, float distance_remaining_);
     void changeLane(path direction_);
     void stopLaneChange();
     bool correctLane(Lane* lane_, bool initialization_ = false);
@@ -69,7 +69,10 @@ public:
     bool brakeLights();
     float mimumumStoppingDistance();
     float minimumFollowingDistance();
+    float slowingDistance();
     float currentSeparation();
+    float stopLine();
+    bool goingThroughLight();
 
     void toggleBlinker(path direction_, bool on_);
     void toggleBrakeLights(bool on_);
@@ -78,6 +81,7 @@ public:
     bool redLightAnalysis();
     bool redLightAnalysis(float current_acceleration);
     void requestAccelerationAdjustment(float adjustment_, bool is_positive_ = true);
+    float distanceToStopComfortably();
 protected:
     void draw(bool initialization_ = false);
     void draw(float value);
@@ -120,6 +124,7 @@ protected:
     bool my_blinker[2]; //left is 0, right is 1
     bool my_brakeLights;
     float my_currentSeparation;
+    bool my_runningLight;
     std::ofstream info;
 private:
 };

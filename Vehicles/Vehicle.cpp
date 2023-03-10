@@ -51,6 +51,9 @@ void Vehicle::drive()
         //which means we may need to set the velocity to 0
         my_currentVelocity[x] = 0;
         my_currentVelocity[y] = 0;
+        my_currentAcceleration[x] = 0;
+        my_currentAcceleration[y] = 0;
+        my_accelerationMagnitude = 0;
         my_stopTime += simulation_params.time_step;
     }
     draw();
@@ -211,7 +214,7 @@ bool Vehicle::accelerate()
         float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
         if(my_targetSpeed == 0)
         {
-            if((velocity_magnitude - my_accelerationMagnitude * simulation_params.time_step) <= 0)
+            if((velocity_magnitude - my_accelerationMagnitude * simulation_params.time_step) <= 0.0001)
             {
                 my_currentVelocity[dot] = 0;
                 my_currentVelocity[not_dot] = 0;
@@ -253,6 +256,13 @@ bool Vehicle::accelerate()
         SWERRINT(my_state);
         return true;
     }
+    if (accelerationComplete)
+    {
+        if(my_accelerationMagnitude != 0)
+        {
+            SWERRFLOAT(my_accelerationMagnitude);
+        }
+    }
     return accelerationComplete;
 }
 
@@ -260,6 +270,10 @@ void Vehicle::accelerate(float target_speed_)
 {
     bool dot = findComponent(my_currentVelocity[x], my_currentVelocity[y]);
     float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+    if(velocity_magnitude == 0 && (my_currentVelocity[x] != 0 || my_currentVelocity[y] != 0))
+    {
+        SWERRFLOAT(my_currentVelocity[x] != 0 ? my_currentVelocity[x] : my_currentVelocity[y]);
+    }
     if(target_speed_ == STOP)
     {
         if(!(my_state & IN_INTERSECTION))
@@ -329,21 +343,37 @@ void Vehicle::accelerate(float target_speed_)
     }
 }
 
-void Vehicle::accelerate(float target_speed_, float distance_remaining_)
+bool Vehicle::accelerate(float target_speed_, float distance_remaining_)
 {
     bool dot = maxComponent(my_currentVelocity[x], my_currentVelocity[y]);
     float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+    if(velocity_magnitude == 0 && (my_currentVelocity[x] != 0 || my_currentVelocity[y] != 0))
+    {
+        SWERRFLOAT(my_currentVelocity[x] != 0 ? my_currentVelocity[x] : my_currentVelocity[y]);
+    }
     //if(!(my_state & IN_INTERSECTION))
     if(true)
     {
         //this may need to be altered so that aggressive drivers vs standard drivers act differently
-        my_accelerationMagnitude = neededAcceleration(my_currentVelocity[dot], distance_remaining_); 
+        my_accelerationMagnitude = neededAcceleration((velocity_magnitude * 1.05), distance_remaining_);
         if(my_accelerationMagnitude < 0)
         {
             my_accelerationMagnitude *= -1;
+        } 
+        if(my_accelerationMagnitude < 0.001)
+        {
+            my_accelerationMagnitude = 0;
+            my_currentAcceleration[x] = 0;
+            my_currentAcceleration[y] = 0;
+            return false;
+        }
+        if(my_accelerationMagnitude > my_maxDeceleration)
+        {
+            my_accelerationMagnitude = my_maxDeceleration;
         }
         my_targetSpeed = STOP;
     }
+    return true;
 }
 
 /*
@@ -653,12 +683,28 @@ bool Vehicle::lightChange(lightColour colour_)
             break;
         case(YELLOW):
         {
-            return yellowLightAnalysis();
+            if(yellowLightAnalysis())
+            {
+                return true;
+            }
+            else
+            {
+                my_runningLight = true;
+                return false;
+            }
         }
             break;
         case(RED):
         {
-            return redLightAnalysis();
+            if(redLightAnalysis())
+            {
+                return true;
+            }
+            else
+            {
+                my_runningLight = true;
+                return false;
+            }
         }
             break;
         default: SWERRINT(colour_);
@@ -1190,6 +1236,11 @@ void Vehicle::toggleBrakeLights(bool on_)
     }
 }
 
+float Vehicle::distanceToStopComfortably()
+{
+    return neededDistance(MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]), my_driver->comfortableDeceleration());
+}
+
 //Printing funtions, no need for explanation
 //They print things
 void Vehicle::printStartingInformation()
@@ -1380,7 +1431,22 @@ float Vehicle::minimumFollowingDistance()
     return my_driver->minimumFollowingDistance();
 }
 
+float Vehicle::slowingDistance()
+{
+    return my_driver->slowingDistance();
+}
+
 float Vehicle::currentSeparation()
 {
     return my_currentSeparation;
+}
+
+float Vehicle::stopLine()
+{
+    return my_stopline;
+}
+
+bool Vehicle::goingThroughLight()
+{
+    return my_runningLight;
 }

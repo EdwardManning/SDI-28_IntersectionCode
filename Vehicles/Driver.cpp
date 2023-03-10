@@ -112,6 +112,22 @@ float Driver::generateReactionTime()
     return 0;
 }
 
+float Driver::setSlowingDistance()
+{
+    if(my_driverType == CALM)
+    {
+        return 3.5 * my_minFollowingDistance;
+    }
+    else if (my_driverType == AGGRESSIVE)
+    {
+        return 2 * my_minFollowingDistance;
+    }
+    else
+    {
+        return 3 * my_minFollowingDistance;
+    }
+}
+
 std::string Driver::name()
 {
     return my_name;
@@ -130,6 +146,11 @@ float Driver::modifier()
 float Driver::reactionTime()
 {
     return my_reactionTime;
+}
+
+float Driver::slowingDistance()
+{
+    return my_slowingDistance;
 }
 
 float Driver::comfortableAcceleration()
