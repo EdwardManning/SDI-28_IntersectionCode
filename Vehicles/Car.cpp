@@ -51,6 +51,8 @@ Car::Car(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
     my_direction = lane_->laneDirection();
     my_laneNumber = lane_->number();
 
+    my_runningLight = false;
+
     if(my_direction == NORTH || my_direction ==SOUTH)
     {
         my_stopline = lane_->endingPosition()[y];
@@ -168,13 +170,14 @@ Car::Car(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
             default: SWERRINT(my_direction);
         }
     }
+    draw(true);
     if (simulation_params.print_vehicle_info)
     {
         std::string filename = "./Output/VehicleOutput/Vehicle" + std::to_string((int)my_number) + ".txt";
         info.open(filename);
         printStartingInformation();
+        printStep();
     }
-    draw(true);
 }
 
 /*

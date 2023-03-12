@@ -351,10 +351,61 @@ static float negative_sin(float period)
     return -1 * sin(period);
 }
 
+//these may be necessary in replacing maxComponent (abs() isn't working)
+static bool findComponent(float first_point_[2], float second_point_[2])
+{
+    float delta_x, delta_y;
+
+    delta_x = first_point_[x] - second_point_[x];
+    if (delta_x < 0)
+    {
+        delta_x *= -1;
+    }
+
+    delta_y = first_point_[y] - second_point_[y];
+    if (delta_y < 0)
+    {
+        delta_y *= -1;
+    }
+
+    return delta_y > delta_x;
+}
+
+static bool findComponent(float first_value_, float second_value_)
+{
+    if(first_value_ < 0)
+    {
+        first_value_ *= -1;
+    }
+    if (second_value_ < 0)
+    {
+        second_value_ *= -1;
+    }
+    return second_value_ > first_value_;
+}
+
+static float neededAcceleration(float current_velocity_, float distance)
+{
+    return (-1 * current_velocity_ * current_velocity_) / (2 * distance);
+}
+
+static float neededDistance(float current_velocity_, float acceleration_)
+{
+    return (-1 * current_velocity_ * current_velocity_) / (2 * acceleration_);
+}
+
+static float distanceBetween(float first_point_[2], float second_point_[2])
+{
+    float delta_x = second_point_[x] - first_point_[x];
+    float delta_y = second_point_[y] - first_point_[y];
+
+    return sqrt((delta_x * delta_x) + (delta_y * delta_y));
+}
+
 //magnitude of a vector
 constexpr float MAGNITUDE(float x_value, float y_value)
 {
-    return sqrt( ( pow(x_value, 2) ) + ( pow(y_value, 2) ) );
+    return sqrt( (x_value * x_value ) + ( y_value * y_value ) );
 }
 
 constexpr float FROM_MAGNITUDE(float h_value, float x_value)

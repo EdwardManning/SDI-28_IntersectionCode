@@ -39,28 +39,44 @@ private:
     bool collisionAnalysis();
     void calculateAverages();
     severity calculateCollisionSeverity(Vehicle* first_vehicle_, Vehicle* second_vehicle_);
+    direction opposingDirection(direction direction_);
 
     //acceleration code
-    void determineAcceleration(Vehicle* vehicle_);
-    bool closeVehicleDecelerationRequired(Vehicle* vehicle_);
-    bool preIntersectionCloseDecelerationRequired(Vehicle* vehicle_); //part of close vehicle acceleration
-    bool closeLaneChangeDecelerationRequired(Vehicle* vehicle_); //part of pre intersection close acceleration
-    bool inIntersectionCloseDecelerationRequired(Vehicle* vehicle_); //part of close vehicle acceleration
-    bool postIntersectionCloseDecelerationRequired(Vehicle* vehicle_); //part of close vehicle acceleration
+    //{
+    void accelerate(Vehicle* vehicle_);
+    //{
+    float determineCloseProximityDecelerationDistance(Vehicle* vehicle_);
+        //{
+    float determineCloseVehicleDecelerationDistance(Vehicle* vehicle_);
+            //{
+    float distanceAhead(Vehicle* current_vehicle_, Vehicle* test_vehicle_);
+            //}
+    float determineLaneChangeDecelerationDistance(Vehicle* vehicle_);
+            //{
+    float determineChangingLaneDeceleration(Vehicle* vehicle_);
+                //{
     bool laneChangeDecelerationRequired(Vehicle* vehicle_);
-    bool lightColourDecelerationRequired(Vehicle* vehicle_);
-    bool lightChangeDecelerationRequired(Vehicle* vehicle_);
-    bool maxSpeedDecelerationRequired(Vehicle* vehicle_);
+                //}
+    float determineCloseLaneChangeDeceleration(Vehicle* vehicle_);
+                //{
+    float checkLaneBlinkerDistance(Vehicle* vehicle_, Lane* lane_, int8 direction_);
+                //}
+            //}
+    float determineBrakeLightDecelerationDistance(Vehicle* vehicle_);
+        //}
+    float determineLightBasedDecelerationDistance(Vehicle* vehicle_);
+        //{ 
+    float lightChangeDecelerationDistance(Vehicle* vehicle_);
+    float lightColourDecelerationDistance(Vehicle* vehicle_);
+        //}
+    //}
     void startAcceleration(Vehicle* vehicle_, float target_speed_);
     void startDeceleration(Vehicle* vehicle_, float target_speed_);
+    void startDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_);
     void changeDeceleration(Vehicle* vehicle_, float target_speed_);
-    bool checkLaneBlinkers(Vehicle* vehicle_, Lane* lane_, int8 direction_);
-    bool scanAhead(Vehicle* vehicle_);
-    bool checkIntersectionClear(Vehicle* vehicle_);
-    bool conflictingPaths(Vehicle* current_vehicle_, Vehicle* test_vehicle_);
-    bool vehicleAhead(Vehicle* vehicle_, bool through_intersection_);
-    float vehicleSeparation(Vehicle* current_vehicle_, Vehicle* ahead_vehicle_);
-    Vehicle* whichVehicleAhead(Vehicle* vehicle_, bool through_intersection_);
+    void changeDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_);
+    //}
+    
 
     //active vehicles functions
     Vehicle* vehicleAtIndex(uint32 index_);

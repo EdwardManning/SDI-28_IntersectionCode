@@ -13,5 +13,7 @@ HumanDriver::HumanDriver(DriverType driver_type)
     my_minStopDistance = 3;
     my_minFollowingDistance = vehicle_params.vehicle_length;
 
+    my_slowingDistance = setSlowingDistance();
+
     my_reactionTime = generateReactionTime();
 }

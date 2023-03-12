@@ -14,6 +14,7 @@ public:
     DriverType driverType();
     float modifier();
     float reactionTime();
+    float slowingDistance();
     float comfortableAcceleration();
     float comfortableDeceleration();
     float minimumStoppingDistance();
@@ -22,10 +23,12 @@ protected:
     float generateComfortableDeceleration();
     float generateComfortableAcceleration();
     float generateReactionTime();
+    float setSlowingDistance();
     std::string my_name;
     DriverType my_driverType;
     float my_modifier;
     float my_reactionTime;
+    float my_slowingDistance;
     float my_minFollowingDistance;
     float my_minStopDistance;
     float my_comfortableDeceleration;
