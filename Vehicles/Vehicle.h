@@ -73,6 +73,7 @@ public:
     float currentSeparation();
     float stopLine();
     bool goingThroughLight();
+    float fuelConsumed();
 
     void toggleBlinker(path direction_, bool on_);
     void toggleBrakeLights(bool on_);
@@ -88,6 +89,7 @@ protected:
     void updateUnitVector();
     void adjustAccelerationMagnitude(float adjustment_, bool is_positive_);
     void adjustAccelerationMagnitude(float acceleration_magnitude_);
+    void consumeFuel();
 
     //printing functions
     void printStartingInformation();
@@ -125,6 +127,9 @@ protected:
     bool my_brakeLights;
     float my_currentSeparation;
     bool my_runningLight;
+    float my_idleFuelConsumption; //mL/s
+    float my_fuelConsumptionAtVelocity; //mL/m (mL/s / m/s)
+    float my_totalFuelConsumption; //mL
     std::ofstream info;
 private:
 };

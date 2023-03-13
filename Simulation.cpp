@@ -844,7 +844,7 @@ void Simulation::accelerate(Vehicle* vehicle_)
             bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
             if(!light_change_occured)
             {
-                if(abs(vehicle_->unitVector()[dot] * (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_->stopLine())) > 0.5)
+                if(abs(vehicle_->unitVector()[dot] * (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_->stopLine())) > 2.5)
                 {
                     if(proximity_deceleration_distance_required > 0 && light_deceleration_distance_required == 0)
                     {
@@ -854,7 +854,7 @@ void Simulation::accelerate(Vehicle* vehicle_)
             }
             else
             {
-                if(abs(vehicle_->unitVector()[dot] * (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_->stopLine())) < 0.5)
+                if(abs(vehicle_->unitVector()[dot] * (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_->stopLine())) < 2.5)
                 {
                     if(light_deceleration_distance_required < 0.5 && proximity_deceleration_distance_required == 0)
                     {
@@ -1721,6 +1721,8 @@ void Simulation::calculateAverages()
                     break;
                 case(TIME_BETWEEN_SPAWNS): continue; //already calculated
                     break;
+                case(FUEL_CONSUMPTION): averages[i] += vehicle_list[j]->fuelConsumed();
+                    break;
                 default: SWERRINT(i);
             }
         }
@@ -1806,16 +1808,28 @@ void Simulation::printCompletion(Vehicle* vehicle_)
 
 void Simulation::printResults()
 {
+    
+
     //This will become much more elaborate once
     //multiple vehicles has been added in
     //should eventually display average times for various
     //actions
     calculateAverages();
     results.open("./Output/Results.txt");
+    results << "~~~~~~~~" << std::endl;
+    results << "RESULTS" << std::endl;
+    results << "~~~~~~~~" << std::endl;
+
+    results << std::endl << std::endl;
+
     for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
     {
-        results << AVERAGE_STR[i] << ":\t" << averages[i] << std::endl; 
+        results << AVERAGE_STR[i] << " " << AVERAGE_UNITS_STR[i] << ":\t" << averages[i] << std::endl; 
     }
+    results << std::endl << std::endl;
+    results << "************************" << std::endl;
+    results << "Fuel Economy: " << GRADE_STR[fuelConsumptionGrade(averages[FUEL_CONSUMPTION])] << std::endl;
+    results << "************************" << std::endl;
     results.close();
 }
 
@@ -1860,6 +1874,26 @@ void Simulation::printCollisionInformation(Vehicle* first_vehicle_, Vehicle* sec
     {
         collision << second_vehicle_->exteriorPosition(k)[x] << "\t" << second_vehicle_->exteriorPosition(k)[y] << "\t";
     }
+    collision << std::endl << std::endl << std::endl;
+
+    collision << "Current Light State: " << LIGHT_EVENT_STATE_STR[my_intersection.trafficLight()->currentEvent()] << " (" << my_intersection.trafficLight()->state() <<")" << std::endl;
+    collision << "Ran Light: " << first_vehicle_->goingThroughLight() << "\t" << second_vehicle_->goingThroughLight() << std::endl << std::endl;
+
+    collision << "Number of Active Vehicles: " << active_vehicles.size() << std::endl;
+    collision << "Number of Vehicles Made: " << my_vehiclesMade << std::endl << std::endl;
+
+    collision << "Elapesed Time: " << elapsed_time << std::endl;
+
+    collision << "Vehicle " << first_vehicle_->number() << " Times: " << first_vehicle_->totalTime() << "\t" << first_vehicle_->timeInIntersection() << "\t";
+    collision << first_vehicle_->timeAtMaxSpeed() << "\t" << first_vehicle_->timeStopped() << "\t" << std::endl;
+
+    collision << "Vehicle " << second_vehicle_->number() << " Times: " << second_vehicle_->totalTime() << "\t" << second_vehicle_->timeInIntersection() << "\t";
+    collision << second_vehicle_->timeAtMaxSpeed() << "\t" << second_vehicle_->timeStopped() << "\t" << std::endl << std::endl;
+
+    collision << "Brakelights Active: " << first_vehicle_->brakeLights() << "\t" << second_vehicle_->brakeLights() << std::endl;
+    collision << "Blinkers Active: " << first_vehicle_->blinker(0) << " " << first_vehicle_->blinker(1) << "\t";
+    collision << second_vehicle_->blinker(0) << " " << second_vehicle_->blinker(1) << std::endl;
+
     collision << std::endl << std::endl << std::endl;
 
     collision << "*******************************************************" << std::endl;

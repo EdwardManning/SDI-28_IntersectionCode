@@ -56,6 +56,7 @@ void Vehicle::drive()
         my_accelerationMagnitude = 0;
         my_stopTime += simulation_params.time_step;
     }
+    consumeFuel();
     draw();
 }
 
@@ -1241,6 +1242,16 @@ float Vehicle::distanceToStopComfortably()
     return neededDistance(MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]), my_driver->comfortableDeceleration());
 }
 
+void Vehicle::consumeFuel()
+{
+    float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+    if(velocity_magnitude == 0 && (my_currentVelocity[x] != 0 || my_currentVelocity[y] != 0))
+    {
+        SWERRFLOAT(my_currentVelocity[x] != 0 ? my_currentVelocity[x] : my_currentVelocity[y]);
+    }
+    my_totalFuelConsumption = (my_fuelConsumptionAtVelocity * velocity_magnitude) + my_idleFuelConsumption;
+}
+
 //Printing funtions, no need for explanation
 //They print things
 void Vehicle::printStartingInformation()
@@ -1283,7 +1294,7 @@ void Vehicle::printFinalInformation()
 {
     info << std::endl;
     info << "*******************************************************" << std::endl;
-    info << my_totalTime << "\t" << my_timeInIntersection << "\t" << my_timeAtMaxSpeed << "\t" << my_stopTime << std::endl;
+    info << my_totalTime << "\t" << my_timeInIntersection << "\t" << my_timeAtMaxSpeed << "\t" << my_stopTime << "\t" << my_totalFuelConsumption << std::endl;
     info << "*******************************************************" << std::endl;
 }
 //The following functions are used to access the values of the 
@@ -1449,4 +1460,9 @@ float Vehicle::stopLine()
 bool Vehicle::goingThroughLight()
 {
     return my_runningLight;
+}
+
+float Vehicle::fuelConsumed()
+{
+    return my_totalFuelConsumption;
 }
