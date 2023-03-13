@@ -279,7 +279,8 @@ enum averages
     TIME_AT_MAX_SPEED,         //2
     TIME_STOPPED,              //3
     TIME_BETWEEN_SPAWNS,       //4
-    TOTAL_AVERAGES,            //5
+    FUEL_CONSUMPTION,          //5
+    TOTAL_AVERAGES,            //6
 };
 
 const std::string AVERAGE_STR[]
@@ -289,7 +290,42 @@ const std::string AVERAGE_STR[]
     "Time At Max Speed",
     "Time Stopped",
     "Time Between Spawns",
+    "Fuel Consumption",
     "Total Averages",
+};
+
+const std::string AVERAGE_UNITS_STR[]
+{
+    "[s]",
+    "[s]",
+    "[s]",
+    "[s]",
+    "[s]",
+    "[mL]",
+    "",
+
+};
+
+enum Grade
+{
+    TERRIBLE,
+    BAD,
+    MEDIOCRE,
+    STANDARD,
+    GOOD,
+    GREAT,
+    EXCELLENT,
+};
+
+const std::string GRADE_STR[]
+{
+    "TERRIBLE",
+    "BAD",
+    "MEDIOCRE",
+    "STANDARD",
+    "GOOD",
+    "GREAT",
+    "EXCELLENT",
 };
 
 enum severity
@@ -328,6 +364,43 @@ const struct directionVectors
 const IntersectionParameters intersection_params;
 const SimulationParameters simulation_params;
 const VehicleParameters vehicle_params;
+
+static Grade fuelConsumptionGrade(float fuel_consumption_)
+{
+    if(fuel_consumption_ < 0)
+    {
+        SWERRFLOAT(fuel_consumption_);
+        return fuelConsumptionGrade(-1 * fuel_consumption_);
+    }
+    else if(fuel_consumption_ < 0.5)
+    {
+        return EXCELLENT;
+    } 
+    else if(fuel_consumption_ < 0.7)
+    {
+        return GREAT;
+    }
+    else if (fuel_consumption_ < 0.9)
+    {
+        return GOOD;
+    }
+    else if (fuel_consumption_ < 1.1)
+    {
+        return STANDARD;
+    } 
+    else if (fuel_consumption_ < 1.3)
+    {
+        return MEDIOCRE;
+    }
+    else if (fuel_consumption_ < 1.5)
+    {
+        return BAD;
+    }
+    else //fuel consumption >= 1.5
+    {
+        return TERRIBLE;
+    }
+}
 
 //functions used for turn modifiers
 //used with the modifier type

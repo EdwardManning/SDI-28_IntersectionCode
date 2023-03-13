@@ -31,6 +31,34 @@ Car::Car(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
     my_accelerationMagnitude = 0;
     my_currentSeparation = -1;
 
+    my_brakeLights = 0;
+    my_blinker[0] = 0;
+    my_blinker[1] = 0;
+
+    switch(my_driver->driverType())
+    {
+        case(CALM):
+        {
+            my_idleFuelConsumption = 0.1389;
+            my_fuelConsumptionAtVelocity = 0.05;
+        }
+            break;
+        case(NORMAL):
+        {
+            my_idleFuelConsumption = 0.2778;
+            my_fuelConsumptionAtVelocity = 0.065;
+        }
+            break;
+        case(AGGRESSIVE):
+        {
+            my_idleFuelConsumption = 0.4167;
+            my_fuelConsumptionAtVelocity = 0.08;
+        }
+            break;
+        default: SWERRINT(my_driver->driverType());
+    }
+    my_totalFuelConsumption = 0;
+
     my_stoplineCenter = -1; //for swerr purposes
 
     my_currentPosition[x] = lane_->startingPosition()[x];
