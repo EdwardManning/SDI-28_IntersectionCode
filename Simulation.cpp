@@ -19,6 +19,7 @@ Simulation::Simulation()
     {
         events << "No Event Printing" << std::endl;
     }
+    debug_log.open("./Output/DebugLog.txt");
     my_vehiclesMade = 0;
     for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
     {
@@ -46,6 +47,7 @@ Simulation::Simulation()
 Simulation::~Simulation()
 {
     events.close();
+    debug_log.close();
 }
 
 /*
@@ -289,10 +291,13 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
             if (vehicle_->currentState() & DECELERATING)
             {
                 changeState(vehicle_, DECELERATING, REMOVE);
-                vehicle_->toggleBrakeLights(OFF);
                 if(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) == 0)
                 {
                     changeState(vehicle_, DRIVING, REMOVE);
+                }
+                else
+                { 
+                    vehicle_->toggleBrakeLights(OFF);
                 }
             }
             else if (vehicle_->currentState() & ACCELERATING)
@@ -311,7 +316,24 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         changeState(vehicle_, DRIVING, REMOVE);
         changeState(vehicle_, DECELERATING, REMOVE);
     }
-    vehicle_->drive();
+    try
+    {
+        vehicle_->drive();
+    }
+    catch(vehicle_time_fail& vtf)
+    {
+        //hard swerr
+        SWERRSTR(vtf.what());
+        printVehicleFailInformation(vehicle_);
+        throw vtf;
+    }
+    catch(impossible_state_fail& ist)
+    {
+        //hard swerr
+        SWERRSTR(ist.what());
+        printVehicleFailInformation(vehicle_);
+        throw ist;
+    }
 }
 
 /*
@@ -800,16 +822,50 @@ void Simulation::accelerate(Vehicle* vehicle_)
     // }
 
     if(vehicle_->currentState() & IN_INTERSECTION &&
-       (my_intersection.trafficLight()->currentEvent() == EW_MUTUAL_RED ||
-       my_intersection.trafficLight()->currentEvent() == NS_MUTUAL_RED))
+       (my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != GREEN &&
+       my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != YELLOW))
     {
         startAcceleration(vehicle_, vehicle_->maxSpeed());
         return;
     }
 
+    if(vehicle_->vehiclePath() == LEFT)
+    {
+        if (vehicle_->currentState() & TURNING)
+        {
+            if(!checkTurnClear(vehicle_))
+            {
+                startDeceleration(vehicle_, STOP);
+                return;
+            }
+        }
+        else
+        {
+            if(!(vehicle_->currentState() & THROUGH_INTERSECTION))
+            {
+                if(!checkTurnClear(vehicle_) &&
+                   my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == GREEN)
+                {
+                    if(proximity_deceleration_distance_required == 0 &&
+                       light_deceleration_distance_required == 0)
+                    {
+                        bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+                        float distance = vehicle_->stopLine() - vehicle_->exteriorPosition(FRONT_BUMPER)[dot];
+                        if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < vehicle_->exteriorPosition(BACK_BUMPER)[dot])
+                        {
+                            distance *= -1;
+                        }
+                        distance += intersection_params.lane_width;
+                        startDeceleration(vehicle_, STOP, distance);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     //std::cout << proximity_deceleration_distance_required << " " << light_deceleration_distance_required << std::endl;
 
-    //we are going to need to adjust this code for if the vehicle is stopped
     if(vehicle_->currentState() & DRIVING)
     {
         if(proximity_deceleration_distance_required != 0)
@@ -817,19 +873,55 @@ void Simulation::accelerate(Vehicle* vehicle_)
             if(proximity_deceleration_distance_required > light_deceleration_distance_required && light_deceleration_distance_required != 0)
             {
                 //if light deceleration distance is lower than the proximity deceleration distance and non zero
-                startDeceleration(vehicle_, STOP, light_deceleration_distance_required);
+                if(!startDeceleration(vehicle_, STOP, light_deceleration_distance_required))
+                {
+                    if(simulation_params.print_debug_info)
+                    {
+                        debug_log << elapsed_time << " Deceleration Rejected " << vehicle_->number() << "\t" << light_deceleration_distance_required << "\t" << __LINE__ << std::endl;
+                    }
+                    if(!startDeceleration(vehicle_, STOP, proximity_deceleration_distance_required))
+                    {
+                        debug_log << elapsed_time << " Deceleration Rejected " << vehicle_->number() << "\t" << proximity_deceleration_distance_required << "\t" << __LINE__ << std::endl;
+                        startAcceleration(vehicle_, vehicle_->maxSpeed());
+                    }
+                }
             }
             else
             {
                 //proximity deceleration distance is not zero and light deceleration distance is either zero or greater than it
-                startDeceleration(vehicle_, STOP, proximity_deceleration_distance_required);
+                if(!startDeceleration(vehicle_, STOP, proximity_deceleration_distance_required))
+                {
+                    if(simulation_params.print_debug_info)
+                    {
+                        debug_log << elapsed_time << " Deceleration Rejected " << vehicle_->number() << "\t" << proximity_deceleration_distance_required << "\t" << __LINE__ << std::endl;
+                    }
+                    if(light_deceleration_distance_required != 0)
+                    {
+                        if(!startDeceleration(vehicle_, STOP, light_deceleration_distance_required))
+                        {
+                            debug_log << elapsed_time << " Deceleration Rejected " << vehicle_->number() << "\t" << light_deceleration_distance_required << "\t" << __LINE__ << std::endl;
+                            startAcceleration(vehicle_, vehicle_->maxSpeed());
+                        }
+                    }
+                    else
+                    {
+                        startAcceleration(vehicle_, vehicle_->maxSpeed());
+                    }
+                }
             }
         }
         else if (light_deceleration_distance_required != 0)
         {
             //if proximity deceleration distance is zero and light deceleration is non zero then light deceleration is  
             //automatically the least non-zero deceleration distance
-            startDeceleration(vehicle_, STOP, light_deceleration_distance_required);
+            if(!startDeceleration(vehicle_, STOP, light_deceleration_distance_required))
+            {
+                if(simulation_params.print_debug_info)
+                {
+                    debug_log << elapsed_time << " Deceleration Rejected " << vehicle_->number() << "\t" << light_deceleration_distance_required << "\t" << __LINE__ << std::endl;
+                }
+                startAcceleration(vehicle_, vehicle_->maxSpeed());
+            }
         }
         else //both are zero
         {
@@ -837,31 +929,54 @@ void Simulation::accelerate(Vehicle* vehicle_)
             startAcceleration(vehicle_, vehicle_->maxSpeed());
         }
     }
-    else
+    else //stopped
     {
         if(!(vehicle_->currentState() & IN_INTERSECTION) && !(vehicle_->currentState() & THROUGH_INTERSECTION))
         {
             bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
-            if(!light_change_occured)
+            int8 dot_modifier = vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > vehicle_->exteriorPosition(BACK_BUMPER)[dot] ? 1 : -1;
+
+            if(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == GREEN)
             {
-                if(abs(vehicle_->unitVector()[dot] * (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_->stopLine())) > 2.5)
+                float distance_left = dot_modifier * (vehicle_->stopLine() - vehicle_->currentPosition()[dot]);
+                if(distance_left < vehicle_params.vehicle_length)
                 {
-                    if(proximity_deceleration_distance_required > 0 && light_deceleration_distance_required == 0)
+                    //no car in front and green light
+                    startAcceleration(vehicle_, vehicle_->maxSpeed());
+                }
+                else
+                {
+                    if(proximity_deceleration_distance_required > 0.25)
                     {
+                        //car in front is accelerating into intersection
                         startAcceleration(vehicle_, vehicle_->maxSpeed());
                     }
                 }
             }
-            else
-            {
-                if(abs(vehicle_->unitVector()[dot] * (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_->stopLine())) < 2.5)
-                {
-                    if(light_deceleration_distance_required < 0.5 && proximity_deceleration_distance_required == 0)
-                    {
-                        startAcceleration(vehicle_, vehicle_->maxSpeed());
-                    }
-                }
-            }
+            // else
+            // {
+
+            // }
+            // if(!light_change_occured)
+            // {
+            //     if(abs(vehicle_->unitVector()[dot] * (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_->stopLine())) > 2.5)
+            //     {
+            //         if(proximity_deceleration_distance_required > 0 && light_deceleration_distance_required == 0)
+            //         {
+            //             startAcceleration(vehicle_, vehicle_->maxSpeed());
+            //         }
+            //     }
+            // }
+            // else
+            // {
+            //     if(abs(vehicle_->unitVector()[dot] * (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_->stopLine())) < 2.5)
+            //     {
+            //         if(light_deceleration_distance_required < 0.5 && proximity_deceleration_distance_required == 0)
+            //         {
+            //             startAcceleration(vehicle_, vehicle_->maxSpeed());
+            //         }
+            //     }
+            // }
         }
         else
         {
@@ -871,6 +986,48 @@ void Simulation::accelerate(Vehicle* vehicle_)
             }
         }
     }
+}
+
+bool Simulation::checkTurnClear(Vehicle* vehicle_)
+{
+    for(uint32 i = 0; i < my_intersection.numberOfVehicles(); i++)
+    {
+        uint32 checked_vehicle = my_intersection.vehicleAtIndex(i);
+        if(vehicle_list[checked_vehicle] != vehicle_)
+        {
+            if(vehicle_list[checked_vehicle]->vehicleDirection() != vehicle_->vehicleDirection())
+            {
+                if(vehicle_list[checked_vehicle]->vehiclePath() == STRAIGHT)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    if(my_intersection.trafficLight()->currentLightColour(opposingDirection(vehicle_->vehicleDirection())) == GREEN)
+    {
+        for(uint32 i = 0; i < my_intersection.getRoad(opposingDirection(vehicle_->vehicleDirection()))->numberOfVehicles(); i++)
+        {
+            uint32 checked_vehicle = my_intersection.getRoad(opposingDirection(vehicle_->vehicleDirection()))->vehicleAtIndex(i);
+            if(vehicle_list[checked_vehicle] != vehicle_)
+            {
+                if(vehicle_list[checked_vehicle]->vehiclePath() == STRAIGHT)
+                {
+                    bool dot = findComponent(vehicle_list[checked_vehicle]->exteriorPosition(FRONT_BUMPER), vehicle_list[checked_vehicle]->exteriorPosition(BACK_BUMPER));
+                    float distance_remaining = vehicle_list[checked_vehicle]->stopLine() - vehicle_list[checked_vehicle]->currentPosition()[dot];
+                    if(distance_remaining < 0)
+                    {
+                        distance_remaining *= -1;
+                    }
+                    if(distance_remaining < (intersection_params.lane_length / 2))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
 }
 
 float Simulation::determineCloseProximityDecelerationDistance(Vehicle* vehicle_)
@@ -885,24 +1042,54 @@ float Simulation::determineCloseProximityDecelerationDistance(Vehicle* vehicle_)
         lane_change_distance = determineLaneChangeDecelerationDistance(vehicle_);
     }
 
-    if(std::isnan(close_vehicle_distance) || std::isinf(close_vehicle_distance))
+    try
     {
-        std::cout << vehicle_->number() << std::endl;
-        std::cout << close_vehicle_distance << " " << __LINE__ << std::endl;
-        throw;
+        if(std::isnan(close_vehicle_distance) || std::isinf(close_vehicle_distance))
+        {
+            //hard swerr
+            SWERRFLOAT(close_vehicle_distance);
+            SWERRFLOAT(lane_change_distance);
+            SWERRFLOAT(brake_light_distance);
+            throw impossible_value_fail();
+        }
+        if(std::isnan(lane_change_distance) || std::isinf(lane_change_distance))
+        {
+            //hard swerr
+            SWERRFLOAT(close_vehicle_distance);
+            SWERRFLOAT(lane_change_distance);
+            SWERRFLOAT(brake_light_distance);
+            throw impossible_value_fail();
+        }
+        if(std::isnan(brake_light_distance) || std::isinf(brake_light_distance))
+        {
+            //hard swerr
+            SWERRFLOAT(close_vehicle_distance);
+            SWERRFLOAT(lane_change_distance);
+            SWERRFLOAT(brake_light_distance);
+            throw impossible_value_fail();
+        }
     }
-    if(std::isnan(lane_change_distance) || std::isinf(lane_change_distance))
+    catch(impossible_value_fail& ivf)
     {
-        std::cout << vehicle_->number() << std::endl;
-        std::cout << lane_change_distance << " " << __LINE__ << std::endl;
-        throw;
+        //hard swerr
+        SWERRSTR(ivf.what());
+        printVehicleFailInformation(vehicle_);
+        throw ivf;
     }
-    if(std::isnan(brake_light_distance) || std::isinf(brake_light_distance))
+
+    if(close_vehicle_distance > intersection_params.frame_length)
     {
-        std::cout << vehicle_->number() << std::endl;
-        std::cout << brake_light_distance << " " << __LINE__ << std::endl;
-        throw;
+        SWERRFLOAT(close_vehicle_distance);
     }
+    if(lane_change_distance > intersection_params.frame_length)
+    {
+        SWERRFLOAT(lane_change_distance);
+    }
+    if(brake_light_distance > intersection_params.frame_length)
+    {
+        SWERRFLOAT(brake_light_distance);
+    }
+    
 
     //here we are looking to return the lowest non-zero stopping distance
     if(close_vehicle_distance != 0) 
@@ -977,11 +1164,22 @@ float Simulation::determineCloseVehicleDecelerationDistance(Vehicle* vehicle_)
             {
                 minimum_nonzero_distance = distance_ahead;
             }
-            if(std::isnan(minimum_nonzero_distance) || std::isinf(minimum_nonzero_distance))
+            try
             {
-                std::cout << vehicle_->number() << " " << active_vehicles[i]->number() << std::endl;
-                std::cout << minimum_nonzero_distance << " " << __LINE__ << std::endl;
-                throw;
+                if(std::isnan(minimum_nonzero_distance) || std::isinf(minimum_nonzero_distance))
+                {
+                    //hard swerr
+                    SWERRINT(active_vehicles[i]->number());
+                    SWERRFLOAT(minimum_nonzero_distance);
+                    throw impossible_value_fail();
+                }
+            }
+            catch(impossible_value_fail& ivf)
+            {
+                //hard swerr
+                SWERRSTR(ivf.what());
+                printVehicleFailInformation(vehicle_);
+                throw ivf;
             }
         }
     }
@@ -1029,15 +1227,25 @@ float Simulation::distanceAhead(Vehicle* current_vehicle_, Vehicle* test_vehicle
                     distance_point[dot] = test_value;
                 }
                 float distance_between = distanceBetween(current_vehicle_->exteriorPosition(FRONT_RIGHT), distance_point);
-                if(std::isnan(distance_between) || std::isinf(distance_between))
+                try
                 {
-                    std::cout << current_vehicle_->number() << " " << test_vehicle_->number() << std::endl;
-                    std::cout << current_vehicle_->exteriorPosition(FRONT_RIGHT)[x] << " " << current_vehicle_->exteriorPosition(FRONT_RIGHT)[y] <<std::endl;
-                    std::cout << distance_point[x] << " " << distance_point[y] << std::endl;
-                    std::cout << distance_between << " " << __LINE__ << std::endl;
-                    throw;
+                    if(std::isnan(distance_between) || std::isinf(distance_between))
+                    {
+                        //hard swerr
+                        SWERRINT(test_vehicle_->number());
+                        SWERRFLOAT(distance_between);
+                        throw impossible_value_fail();
+                    }
+                    
                 }
-                if(distance_between < current_vehicle_->slowingDistance() || distance_between != 0)
+                catch(impossible_value_fail& ivf)
+                {
+                    //hard swerr
+                    SWERRSTR(ivf.what());
+                    printVehicleFailInformation(current_vehicle_);
+                    throw ivf;
+                }
+                if(distance_between < current_vehicle_->slowingDistance())
                 {
                     if(lowest_nonzero_distance == 0 || distance_between < lowest_nonzero_distance)
                     {
@@ -1062,15 +1270,25 @@ float Simulation::distanceAhead(Vehicle* current_vehicle_, Vehicle* test_vehicle
                     distance_point[dot] = test_value;
                 }
                 float distance_between = distanceBetween(current_vehicle_->exteriorPosition(FRONT_LEFT), distance_point);
-                if(std::isnan(distance_between) || std::isinf(distance_between))
+                try
                 {
-                    std::cout << current_vehicle_->number() << " " << test_vehicle_->number() << std::endl;
-                    std::cout << current_vehicle_->exteriorPosition(FRONT_LEFT)[x] << " " << current_vehicle_->exteriorPosition(FRONT_LEFT)[y] <<std::endl;
-                    std::cout << distance_point[x] << " " << distance_point[y] << std::endl;
-                    std::cout << distance_between << " " << __LINE__ << std::endl;
-                    throw;
+                    if(std::isnan(distance_between) || std::isinf(distance_between))
+                    {
+                        //hard swerr
+                        SWERRINT(test_vehicle_->number());
+                        SWERRFLOAT(distance_between);
+                        throw impossible_value_fail();
+                    }
+                    
                 }
-                if(distance_between < current_vehicle_->slowingDistance() || distance_between != 0)
+                catch(impossible_value_fail& ivf)
+                {
+                    //hard swerr
+                    SWERRSTR(ivf.what());
+                    printVehicleFailInformation(current_vehicle_);
+                    throw ivf;
+                }
+                if(distance_between < current_vehicle_->slowingDistance())
                 {
                     if(lowest_nonzero_distance == 0 || distance_between < lowest_nonzero_distance)
                     {
@@ -1341,6 +1559,11 @@ float Simulation::lightChangeDecelerationDistance(Vehicle* vehicle_)
         }
         return distance;
     }
+    if(vehicle_->goingThroughLight() && simulation_params.print_debug_info)
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " is going through the light\t" << vehicle_->currentVelocity()[x] << "\t" << vehicle_->currentVelocity()[y] << "\t";
+        debug_log << dot_modifier * (vehicle_->stopLine() - vehicle_->currentPosition()[dot]) << std::endl;
+    }
     return 0;
 }
 
@@ -1365,12 +1588,23 @@ float Simulation::lightColourDecelerationDistance(Vehicle* vehicle_)
         my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == RED)
     {
         float distance = dot_modifier * (vehicle_->stopLine() - vehicle_->currentPosition()[dot]);
-        if(std::isnan(distance) || std::isinf(distance))
+        try
         {
-            std::cout << dot << vehicle_->number() << std::endl;
-            std::cout << distance << " " << __LINE__ << std::endl;
-            std::cout << vehicle_->stopLine() << " " << vehicle_->exteriorPosition(FRONT_BUMPER)[dot] << std::endl;
-            throw;
+            if(std::isnan(distance) || std::isinf(distance))
+            {
+                //hard swerr
+                SWERRINT(vehicle_->stopLine());
+                SWERRFLOAT(distance);
+                throw impossible_value_fail();
+            }
+            
+        }
+        catch(impossible_value_fail& ivf)
+        {
+            //hard swerr
+            SWERRSTR(ivf.what());
+            printVehicleFailInformation(vehicle_);
+            throw ivf;
         }
         if(distance < 0)
         {
@@ -1380,6 +1614,14 @@ float Simulation::lightColourDecelerationDistance(Vehicle* vehicle_)
                 SWERRINT(vehicle_->number());
                 SWERRINT(dot_modifier);
             }
+            else
+            {
+                return 0;
+            }
+        }
+        if(distance > intersection_params.lane_length)
+        {
+            SWERRFLOAT(distance);
         }
         return distance;
     }
@@ -1418,11 +1660,10 @@ void Simulation::startDeceleration(Vehicle* vehicle_, float target_speed_)
 {
     if(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) > target_speed_)
     {
-        if(!(vehicle_->currentState() & DECELERATING) &&
-            (vehicle_->currentState() & DRIVING))
+        if((vehicle_->currentState() & DRIVING))
         {   
             vehicle_->accelerate(target_speed_);
-            if (vehicle_->currentAccelerationMagnitude() > 0)
+            if (vehicle_->currentAccelerationMagnitude() > 0 && !(vehicle_->currentState() & DECELERATING))
             {
                 changeState(vehicle_, DECELERATING, ADD);
                 if (vehicle_->currentState() & ACCELERATING)
@@ -1431,15 +1672,11 @@ void Simulation::startDeceleration(Vehicle* vehicle_, float target_speed_)
                 }
                 vehicle_->toggleBrakeLights(ON);
             }
-            else
-            {
-                SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
-            }
         }
     }
 }
 
-void Simulation::startDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_)
+bool Simulation::startDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_)
 {
     if(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) > target_speed_)
     {
@@ -1456,6 +1693,7 @@ void Simulation::startDeceleration(Vehicle* vehicle_, float target_speed_, float
                     }
                     vehicle_->toggleBrakeLights(ON);
                 }
+                return true;
             }
             else
             {
@@ -1464,9 +1702,11 @@ void Simulation::startDeceleration(Vehicle* vehicle_, float target_speed_, float
                     changeState(vehicle_, DECELERATING, REMOVE);
                     vehicle_->toggleBrakeLights(OFF);
                 }
+                return false;
             }
         }
     }
+    return false;
 }
 
 void Simulation::changeDeceleration(Vehicle* vehicle_, float target_speed_)
@@ -1900,5 +2140,87 @@ void Simulation::printCollisionInformation(Vehicle* first_vehicle_, Vehicle* sec
     collision << "Severity: " << SEVERITY_STR[calculateCollisionSeverity(first_vehicle_, second_vehicle_)] << std::endl;
     collision << "*******************************************************" << std::endl;
 
+    collision << std::endl << std::endl << std::endl;
+    
+    for (uint32 i = 0; i < active_vehicles.size(); i++)
+    {
+        if(active_vehicles[i] == first_vehicle_ || active_vehicles[i] == second_vehicle_)
+        {
+            continue;
+        }
+        else
+        {
+            collision << active_vehicles[i]->number() << "\t" << DRIVER_TYPE_STR[active_vehicles[i]->driverType()] << "\t";
+            collision << DIRECTION_STR[active_vehicles[i]->vehicleDirection()] << "\t" << PATH_STR[active_vehicles[i]->vehiclePath()] << "\t" << VEHICLE_TYPE_STR[active_vehicles[i]->vehicleType()] << std::endl;
+            collision << (int)active_vehicles[i]->currentState() << "\t" << active_vehicles[i]->currentPosition()[x] << "\t" << active_vehicles[i]->currentPosition()[y] << "\t";
+            collision << active_vehicles[i]->currentVelocity()[x] << "\t" << active_vehicles[i]->currentVelocity()[y] << "\t";
+            collision << active_vehicles[i]->currentAccelerationMagnitude() << "\t" << active_vehicles[i]->currentAcceleration()[x] << "\t" << active_vehicles[i]->currentAcceleration()[y] <<  std::endl;
+            collision << std::endl << std::endl;
+        }
+    }
+
     collision.close();
+}
+
+void Simulation::printVehicleFailInformation(Vehicle* vehicle_)
+{
+    std::ofstream fail;
+    std::string file_name = "./Output/FailureReport.txt";
+    fail.open(file_name);
+    fail << "***************" << std::endl;
+    fail << "VEHICLE FAILURE" << std::endl;
+    fail << "***************" << std::endl;
+    fail << std::endl << std::endl;
+
+    fail << vehicle_->number() << "\t" << DRIVER_TYPE_STR[vehicle_->driverType()] << "\t";
+    fail << DIRECTION_STR[vehicle_->vehicleDirection()] << "\t" << PATH_STR[vehicle_->vehiclePath()] << "\t" << VEHICLE_TYPE_STR[vehicle_->vehicleType()] << std::endl;
+    fail << (int)vehicle_->currentState() << "\t" << vehicle_->currentPosition()[x] << "\t" << vehicle_->currentPosition()[y] << "\t";
+    fail << vehicle_->currentVelocity()[x] << "\t" << vehicle_->currentVelocity()[y] << "\t";
+    fail << vehicle_->currentAccelerationMagnitude() << "\t" << vehicle_->currentAcceleration()[x] << "\t" << vehicle_->currentAcceleration()[y] << "\t";
+    for (uint8 k = 0; k < TOTAL_POINTS; k++)
+    {
+        fail << vehicle_->exteriorPosition(k)[x] << "\t" << vehicle_->exteriorPosition(k)[y] << "\t";
+    }
+    fail << std::endl;
+
+    fail << std::endl << std::endl << std::endl;
+
+    fail << "Current Light State: " << LIGHT_EVENT_STATE_STR[my_intersection.trafficLight()->currentEvent()] << " (" << my_intersection.trafficLight()->state() <<")" << std::endl << std::endl;
+
+    fail << "Number of Active Vehicles: " << active_vehicles.size() << std::endl;
+    fail << "Number of Vehicles Made: " << my_vehiclesMade << std::endl << std::endl;
+
+    fail << "Elapesed Time: " << elapsed_time << std::endl;
+
+    fail << "Vehicle " << vehicle_->number() << " Times: " << vehicle_->totalTime() << "\t" << vehicle_->timeInIntersection() << "\t";
+    fail << vehicle_->timeAtMaxSpeed() << "\t" << vehicle_->timeStopped() << "\t" << std::endl;
+    
+    fail << "Brakelights Active: " << vehicle_->brakeLights() << std::endl;
+    fail << "Blinkers Active: " << vehicle_->blinker(0) << " " << vehicle_->blinker(1) << std::endl;
+
+    fail << std::endl << std::endl << std::endl;
+
+    fail << "*************************" << std::endl;
+    fail << "OTHER VEHICLE INFORMATION" << std::endl;
+    fail << "*************************" << std::endl;
+    fail << std::endl << std::endl;
+
+    for (uint32 i = 0; i < active_vehicles.size(); i++)
+    {
+        if(active_vehicles[i] == vehicle_)
+        {
+            continue;
+        }
+        else
+        {
+            fail << active_vehicles[i]->number() << "\t" << DRIVER_TYPE_STR[active_vehicles[i]->driverType()] << "\t";
+            fail << DIRECTION_STR[active_vehicles[i]->vehicleDirection()] << "\t" << PATH_STR[active_vehicles[i]->vehiclePath()] << "\t" << VEHICLE_TYPE_STR[active_vehicles[i]->vehicleType()] << std::endl;
+            fail << (int)active_vehicles[i]->currentState() << "\t" << active_vehicles[i]->currentPosition()[x] << "\t" << active_vehicles[i]->currentPosition()[y] << "\t";
+            fail << active_vehicles[i]->currentVelocity()[x] << "\t" << active_vehicles[i]->currentVelocity()[y] << "\t";
+            fail << active_vehicles[i]->currentAccelerationMagnitude() << "\t" << active_vehicles[i]->currentAcceleration()[x] << "\t" << active_vehicles[i]->currentAcceleration()[y] <<  std::endl;
+            fail << std::endl << std::endl;
+        }
+    }
+
+    fail.close();
 }

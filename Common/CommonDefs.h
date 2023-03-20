@@ -11,6 +11,7 @@
 #include "./IntersectionParameters.h"
 #include "./SimulationParameters.h"
 #include "./VehicleParameters.h"
+#include "./Exceptions.h"
 
 //for software error (SWERR) reporting purposes
 #define SWERRINT(x) fprintf(stderr, "SWERR at %s:%d - (%d)\n", __FILE__, __LINE__, x)

@@ -16,4 +16,5 @@ SimulationParameters::SimulationParameters()
 {
     print_simulation_events = true;
     print_vehicle_info = true;
+    print_debug_info = true;
 }

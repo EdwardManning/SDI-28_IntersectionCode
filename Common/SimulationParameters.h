@@ -17,6 +17,7 @@ public:
     uint8 spawn_density = 1; //spawn chance at 5 seconds since the previous vehicle was spawned
     bool print_simulation_events;
     bool print_vehicle_info;
+    bool print_debug_info;
 protected:
 private:
 };

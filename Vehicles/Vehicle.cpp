@@ -58,6 +58,38 @@ void Vehicle::drive()
     }
     consumeFuel();
     draw();
+    if(my_totalTime > 200)
+    {
+        throw vehicle_time_fail();
+    }
+    else if((my_state & IN_INTERSECTION) && (my_state & THROUGH_INTERSECTION))
+    {
+        //hard swerr
+        //so we know which got hit
+        SWERRINT(my_state);
+        throw impossible_state_fail();
+    } 
+    else if((my_state & CHANGING_LANES) && (my_state & CORRECT_LANE))
+    {
+        //hard swerr
+        //so we know which got hit
+        SWERRINT(my_state);
+        throw impossible_state_fail();
+    }
+    else if((my_state & ACCELERATING) && (my_state & DECELERATING))
+    {
+        //hard swerr
+        //so we know which got hit
+        SWERRINT(my_state);
+        throw impossible_state_fail();
+    }
+    else if ((my_state & TURNING) && !(my_state & IN_INTERSECTION))
+    {
+        //hard swerr
+        //so we know which got hit
+        SWERRINT(my_state);
+        throw impossible_state_fail();
+    }
 }
 
 /*
@@ -113,7 +145,7 @@ bool Vehicle::accelerate()
     if((my_currentVelocity[dot] == 0) && (my_currentVelocity[not_dot] == 0))
     {
         dot_positive = my_unitVector[dot] >= 0;
-        not_dot_positive =my_unitVector[not_dot] >= 0;
+        not_dot_positive = my_unitVector[not_dot] >= 0;
     }
     else
     {
@@ -285,33 +317,47 @@ void Vehicle::accelerate(float target_speed_)
         }
         else
         {   
-            if(my_direction == NORTH || my_direction == SOUTH)
-            {
-                float distance = ((intersection_params.ew_number_of_exits - 1) * intersection_params.lane_width) - my_currentPosition[y];
-                if(distance < 0)
-                {
-                    distance *= -1;
-                }
+            // float distance = my_currentPosition[dot] - my_stopline;
+            // if (distance < 0)
+            // {
+            //     distance *= -1;
+            // }
+            // if(distance < intersection_params.lane_width)
+            // {
+            //     my_accelerationMagnitude = my_driver->comfortableDeceleration();
+            // }
+            // else
+            // {
+            //     my_accelerationMagnitude = my_maxDeceleration;
+            // }
+            my_accelerationMagnitude = my_maxDeceleration;
+            // if(my_direction == NORTH || my_direction == SOUTH)
+            // {
+            //     float distance = ((intersection_params.ew_number_of_exits - 1) * intersection_params.lane_width) - my_currentPosition[y];
+            //     if(distance < 0)
+            //     {
+            //         distance *= -1;
+            //     }
                 
-                my_accelerationMagnitude = neededAcceleration(my_currentVelocity[dot], distance);
-                if(my_accelerationMagnitude > my_maxDeceleration)
-                {
-                    my_accelerationMagnitude = my_maxDeceleration;
-                }
-            }
-            else
-            {
-                float distance = ((intersection_params.ns_number_of_exits - 1) * intersection_params.lane_width) - my_currentPosition[x];
-                if(distance < 0)
-                {
-                    distance *= -1;
-                }
-                my_accelerationMagnitude = neededAcceleration(my_currentVelocity[dot], distance);
-                if(my_accelerationMagnitude > my_maxDeceleration)
-                {
-                    my_accelerationMagnitude = my_maxDeceleration;
-                }
-            }
+            //     my_accelerationMagnitude = neededAcceleration(my_currentVelocity[dot], distance);
+            //     if(my_accelerationMagnitude > my_maxDeceleration)
+            //     {
+            //         my_accelerationMagnitude = my_maxDeceleration;
+            //     }
+            // }
+            // else
+            // {
+            //     float distance = ((intersection_params.ns_number_of_exits - 1) * intersection_params.lane_width) - my_currentPosition[x];
+            //     if(distance < 0)
+            //     {
+            //         distance *= -1;
+            //     }
+            //     my_accelerationMagnitude = neededAcceleration(my_currentVelocity[dot], distance);
+            //     if(my_accelerationMagnitude > my_maxDeceleration)
+            //     {
+            //         my_accelerationMagnitude = my_maxDeceleration;
+            //     }
+            // }
         }
         if(my_accelerationMagnitude < 0)
         {
@@ -361,12 +407,12 @@ bool Vehicle::accelerate(float target_speed_, float distance_remaining_)
         {
             my_accelerationMagnitude *= -1;
         } 
-        if(my_accelerationMagnitude < 0.001)
+        if(my_accelerationMagnitude < 0.01)
         {
-            my_accelerationMagnitude = 0;
+            my_accelerationMagnitude = my_driver->comfortableDeceleration();
             my_currentAcceleration[x] = 0;
             my_currentAcceleration[y] = 0;
-            return false;
+            return true;
         }
         if(my_accelerationMagnitude > my_maxDeceleration)
         {
@@ -1016,6 +1062,9 @@ void Vehicle::draw(bool initialization_)
     bool dot_is_positive = my_currentVelocity[dot] >= 0;
     bool not_dot_is_positive = my_currentVelocity[not_dot] >= 0;
 
+    // bool dot_is_positive = my_exteriorPosition[FRONT_BUMPER][dot] > my_exteriorPosition[BACK_BUMPER][dot];
+    // bool not_dot_positive = my_currentVelocity[not_dot] >= 0;
+
     int8 dot_modifier = dot_is_positive ? 1 : -1;
     int8 not_dot_modifier = not_dot_is_positive ? 1 : -1;
 
@@ -1027,7 +1076,7 @@ void Vehicle::draw(bool initialization_)
     uint8 half_length = vehicle_params.vehicle_length / 2;
     uint8 half_width = vehicle_params.vehicle_width / 2;
 
-    if(not_dot_velocity_magnitude == 0 || (my_state &CHANGING_LANES))
+    if(not_dot_velocity_magnitude == 0 || (my_state & CHANGING_LANES))
     {
         theta = 0;
     }
