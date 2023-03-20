@@ -45,6 +45,7 @@ private:
     //{
     void accelerate(Vehicle* vehicle_);
     //{
+    bool checkTurnClear(Vehicle* vehicle_);
     float determineCloseProximityDecelerationDistance(Vehicle* vehicle_);
         //{
     float determineCloseVehicleDecelerationDistance(Vehicle* vehicle_);
@@ -72,7 +73,7 @@ private:
     //}
     void startAcceleration(Vehicle* vehicle_, float target_speed_);
     void startDeceleration(Vehicle* vehicle_, float target_speed_);
-    void startDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_);
+    bool startDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_);
     void changeDeceleration(Vehicle* vehicle_, float target_speed_);
     void changeDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_);
     //}
@@ -92,6 +93,7 @@ private:
     void printTrafficLightStateChange(TrafficLight* traffic_light_);
     void printVehicleArrival(Vehicle* vehicle_);
     void printCollisionInformation(Vehicle* first_vehicle_, Vehicle* second_vehicle_);
+    void printVehicleFailInformation(Vehicle* vehicle_);
     
     bool light_change_occured;
     uint32 my_vehiclesMade;
@@ -109,4 +111,5 @@ private:
 
     std::ofstream events; //used for printing events
     std::ofstream results; //used for printing results at end of simulation
+    std::ofstream debug_log; //used for printing non-swerr "unusual" behaviour
 };
