@@ -60,6 +60,7 @@ const std::string LANE_STR = "lane";
 const std::string EXIT_STR = "exit";
 const std::string ROAD_STR = "road";
 const std::string DRIVER_STR = "driver";
+const std::string NOT_APPLICABLE = "N/A";
 
 //all directions (mostly for roads)
 enum direction
@@ -281,7 +282,8 @@ enum averages
     TIME_STOPPED,              //3
     TIME_BETWEEN_SPAWNS,       //4
     FUEL_CONSUMPTION,          //5
-    TOTAL_AVERAGES,            //6
+    CO2_EMISSIONS,             //6
+    TOTAL_AVERAGES,            //7
 };
 
 const std::string AVERAGE_STR[]
@@ -292,6 +294,7 @@ const std::string AVERAGE_STR[]
     "Time Stopped",
     "Time Between Spawns",
     "Fuel Consumption",
+    "CO2 EMISSIONS",
     "Total Averages",
 };
 
@@ -303,6 +306,7 @@ const std::string AVERAGE_UNITS_STR[]
     "[s]",
     "[s]",
     "[mL]",
+    "[kg]",
     "",
 
 };
@@ -373,31 +377,31 @@ static Grade fuelConsumptionGrade(float fuel_consumption_)
         SWERRFLOAT(fuel_consumption_);
         return fuelConsumptionGrade(-1 * fuel_consumption_);
     }
-    else if(fuel_consumption_ < 0.5)
+    else if(fuel_consumption_ < 20)
     {
         return EXCELLENT;
     } 
-    else if(fuel_consumption_ < 0.7)
+    else if(fuel_consumption_ < 22)
     {
         return GREAT;
     }
-    else if (fuel_consumption_ < 0.9)
+    else if (fuel_consumption_ < 24)
     {
         return GOOD;
     }
-    else if (fuel_consumption_ < 1.1)
+    else if (fuel_consumption_ < 26)
     {
         return STANDARD;
     } 
-    else if (fuel_consumption_ < 1.3)
+    else if (fuel_consumption_ < 28)
     {
         return MEDIOCRE;
     }
-    else if (fuel_consumption_ < 1.5)
+    else if (fuel_consumption_ < 30)
     {
         return BAD;
     }
-    else //fuel consumption >= 1.5
+    else //fuel consumption >= 32
     {
         return TERRIBLE;
     }

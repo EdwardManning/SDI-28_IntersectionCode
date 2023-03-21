@@ -6,6 +6,7 @@
 #include "../Infrastructure/Lane.h"
 #include "./Driver.h"
 #include "./HumanDriver.h"
+#include "./SelfDriver.h"
 
 /*
 *   Name: Vehicle
@@ -21,6 +22,7 @@ class Vehicle
 {
 public:
     Vehicle();
+    Vehicle(uint32 number_, path path_, Lane* lane_);
     Vehicle(uint32 number_, path path_, Lane* lane_, DriverType driver_type_);
 
     //important functions
@@ -74,6 +76,7 @@ public:
     float stopLine();
     bool goingThroughLight();
     float fuelConsumed();
+    float emissions();
 
     void toggleBlinker(path direction_, bool on_);
     void toggleBrakeLights(bool on_);
@@ -89,7 +92,7 @@ protected:
     void updateUnitVector();
     void adjustAccelerationMagnitude(float adjustment_, bool is_positive_);
     void adjustAccelerationMagnitude(float acceleration_magnitude_);
-    void consumeFuel();
+    virtual void consumeFuel();
 
     //printing functions
     void printStartingInformation();
@@ -130,6 +133,7 @@ protected:
     float my_idleFuelConsumption; //mL/s
     float my_fuelConsumptionAtVelocity; //mL/m (mL/s / m/s)
     float my_totalFuelConsumption; //mL
+    float my_totalEmissions;
     std::ofstream info;
 private:
 };

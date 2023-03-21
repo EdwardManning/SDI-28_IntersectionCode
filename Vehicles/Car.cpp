@@ -58,6 +58,7 @@ Car::Car(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
         default: SWERRINT(my_driver->driverType());
     }
     my_totalFuelConsumption = 0;
+    my_totalEmissions = 0;
 
     my_stoplineCenter = -1; //for swerr purposes
 
