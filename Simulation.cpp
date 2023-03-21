@@ -21,9 +21,27 @@ Simulation::Simulation()
     }
     debug_log.open("./Output/DebugLog.txt");
     my_vehiclesMade = 0;
+    my_selfDrivingVehiclesMade = 0;
+    my_leftVehiclesMade = 0;
+    my_sdvLeftVehiclesMade = 0;
+    my_straightVehiclesMade = 0;
+    my_sdvStraightVehiclesMade = 0;
+    my_rightVehiclesMade = 0;
+    my_sdvRightVehiclesMade = 0;
     for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
     {
         averages[i] = 0;
+        left_averages[i] =0;
+        straight_averages[i] = 0;
+        right_averages[i] = 0;
+        self_driving_averages[i] = 0;
+        sdv_left_averages[i] = 0;
+        sdv_straight_averages[i] = 0;
+        sdv_right_averages[i] = 0;
+        human_driving_averages[i] = 0;
+        hd_left_averages[i] = 0;
+        hd_straight_averages[i] = 0;
+        hd_right_averages[i] = 0;
     }
     vehicle_list = new Vehicle*[simulation_params.number_of_vehicles];
     generateVehicle(my_vehiclesMade);
@@ -69,7 +87,8 @@ void Simulation::run()
     {   
         for(uint32 i = 0; i < active_vehicles.size(); i++)
         {
-            if (active_vehicles[i]->vehicleType() == CAR)
+            if (active_vehicles[i]->vehicleType() == CAR || 
+                active_vehicles[i]->vehicleType() == SELF_DRIVING_CAR)
             {
                 if(!(active_vehicles[i]->isCompleted()))
                 {
@@ -1747,16 +1766,19 @@ void Simulation::generateVehicle(uint32 number_)
     direction vehicle_direction;
     uint8 lane_number;
     DriverType driver_type;
+    VehicleType vehicle_type;
 
     std::random_device root;
     std::mt19937 random_path(root());
     std::mt19937 random_direction(root());
     std::mt19937 random_lane_number(root());
     std::mt19937 random_driver_type(root());
+    std::mt19937 random_vehicle_type(root());
 
     std::uniform_int_distribution<> path_distribution(1, 3);
-    std::uniform_int_distribution<> direction_distribution(0, 3);
+    std::uniform_int_distribution<> direction_distribution(0, 100);
     std::uniform_int_distribution<> driver_type_distribution(1, 3);
+    std::uniform_int_distribution<> vehicle_type_distribution(0, 100);
 
     uint8 switch_placeholder = path_distribution(random_path);
     switch(switch_placeholder)
@@ -1770,52 +1792,70 @@ void Simulation::generateVehicle(uint32 number_)
         default: SWERRINT(switch_placeholder);
     }
 
+    uint8 north_range = simulation_params.north_spawn_probability;
+    uint8 south_range = north_range + simulation_params.south_spawn_probability;
+    uint8 east_range = south_range + simulation_params.east_spawn_probability;
+    uint8 west_range = east_range + simulation_params.west_spawn_probability;
     switch_placeholder = direction_distribution(random_direction);
-    switch(switch_placeholder)
+    if(switch_placeholder < north_range)
     {
-        case(0):
-        {
-            vehicle_direction = NORTH;
-            std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ns_number_of_entries - 1);
-            lane_number = lane_number_distribution(random_lane_number) + intersection_params.ns_number_of_exits;
-        }
-            break;
-        case(1):
-        {
-            vehicle_direction = SOUTH;
-            std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ns_number_of_entries - 1);
-            lane_number = lane_number_distribution(random_lane_number) + intersection_params.ns_number_of_exits;
-        }
-            break;
-        case(2):
-        {
-            vehicle_direction = EAST;
-            std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ew_number_of_entries - 1);
-            lane_number = lane_number_distribution(random_lane_number) + intersection_params.ew_number_of_exits;
-        }
-            break;
-        case(3):
-        {
-            vehicle_direction = WEST;
-            std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ew_number_of_entries - 1);
-            lane_number = lane_number_distribution(random_lane_number) + intersection_params.ew_number_of_exits;
-        } 
-            break;
-        default: SWERRINT(switch_placeholder);
+        vehicle_direction = NORTH;
+        std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ns_number_of_entries - 1);
+        lane_number = lane_number_distribution(random_lane_number) + intersection_params.ns_number_of_exits;
+    }
+    else if(switch_placeholder < south_range)
+    {
+        vehicle_direction = SOUTH;
+        std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ns_number_of_entries - 1);
+        lane_number = lane_number_distribution(random_lane_number) + intersection_params.ns_number_of_exits;
+    }
+    else if(switch_placeholder < east_range)
+    {
+        vehicle_direction = EAST;
+        std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ew_number_of_entries - 1);
+        lane_number = lane_number_distribution(random_lane_number) + intersection_params.ew_number_of_exits;
+    }
+    else if(switch_placeholder <= west_range)
+    {
+        vehicle_direction = WEST;
+        std::uniform_int_distribution<> lane_number_distribution(0, intersection_params.ew_number_of_entries - 1);
+        lane_number = lane_number_distribution(random_lane_number) + intersection_params.ew_number_of_exits;
+    }
+    else
+    {
+        //likely will cause a crash in the program
+        SWERRINT(switch_placeholder);
     }
 
-    switch_placeholder = driver_type_distribution(random_driver_type);
-    switch(switch_placeholder)
+    switch_placeholder = vehicle_type_distribution(random_vehicle_type);
+    if(switch_placeholder < simulation_params.self_driving_vehicle_probability)
     {
-        case(1): driver_type = CALM;
-            break;
-        case(2): driver_type = NORMAL;
-            break;
-        case(3): driver_type = AGGRESSIVE;
-            break;
-        default: SWERRINT(switch_placeholder);
+        vehicle_type = SELF_DRIVING_CAR;
     }
-    vehicle_list[number_] = new Car(number_, vehicle_path, my_intersection.getRoad(vehicle_direction)->getLane(lane_number), driver_type);
+    else
+    {
+        vehicle_type = CAR;
+    }
+
+    if(vehicle_type == CAR)
+    {
+        switch_placeholder = driver_type_distribution(random_driver_type);
+        switch(switch_placeholder)
+        {
+            case(1): driver_type = CALM;
+                break;
+            case(2): driver_type = NORMAL;
+                break;
+            case(3): driver_type = AGGRESSIVE;
+                break;
+            default: SWERRINT(switch_placeholder);
+        }
+        vehicle_list[number_] = new Car(number_, vehicle_path, my_intersection.getRoad(vehicle_direction)->getLane(lane_number), driver_type);
+    }
+    else
+    {
+        vehicle_list[number_] = new SelfDrivingCar(number_, vehicle_path, my_intersection.getRoad(vehicle_direction)->getLane(lane_number));
+    }
 
     if(simulation_params.print_simulation_events)
     {
@@ -1945,34 +1985,451 @@ bool Simulation::removeFromActiveVehicles(Vehicle* vehicle_)
 
 void Simulation::calculateAverages()
 {
-    for (uint8 i = 0; i < TOTAL_AVERAGES; i++)
+
+    for(uint32 j = 0; j < simulation_params.number_of_vehicles; j++)
     {
-        for(uint32 j = 0; j < simulation_params.number_of_vehicles; j++)
+        calculateTotalAverages(vehicle_list[j]);
+
+        switch(vehicle_list[j]->vehiclePath())
         {
-            switch(i)
-            {
-                case(TIME_THROUGH_INTERSECTION): averages[i] += vehicle_list[j]->totalTime();
-                    break;
-                case(TIME_IN_INTERSECTION): averages[i] += vehicle_list[j]->timeInIntersection();
-                    break;
-                case(TIME_AT_MAX_SPEED): averages[i] += vehicle_list[j]->timeAtMaxSpeed();
-                    break;
-                case(TIME_STOPPED): averages[i] += vehicle_list[j]->timeStopped();
-                    break;
-                case(TIME_BETWEEN_SPAWNS): continue; //already calculated
-                    break;
-                case(FUEL_CONSUMPTION): averages[i] += vehicle_list[j]->fuelConsumed();
-                    break;
-                default: SWERRINT(i);
-            }
+            case(LEFT): calculateLeftAverages(vehicle_list[j]);
+                break;
+            case(STRAIGHT): calculateStraightAverages(vehicle_list[j]);
+                break;
+            case(RIGHT): calculateRightAverages(vehicle_list[j]);
+                break;
+            default:SWERRINT(vehicle_list[j]->vehiclePath());
         }
+        
+    }
+    for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
+    {
         if(i == TIME_BETWEEN_SPAWNS)
         {
             averages[i] /= my_vehiclesMade;
         }
         else
         {  
-            averages[i] /= simulation_params.number_of_vehicles;
+            averages[i] /= my_vehiclesMade;
+            if(my_selfDrivingVehiclesMade > 0)
+            {
+                self_driving_averages[i] /= my_selfDrivingVehiclesMade;
+            }
+            human_driving_averages[i] /= (my_vehiclesMade - my_selfDrivingVehiclesMade);
+
+            if(my_leftVehiclesMade > 0)
+            {
+                left_averages[i] /= my_leftVehiclesMade;
+                if(my_sdvLeftVehiclesMade > 0)
+                {
+                    sdv_left_averages[i] /= my_sdvLeftVehiclesMade;
+                }
+                hd_left_averages[i] /= (my_leftVehiclesMade - my_sdvLeftVehiclesMade);
+            }
+                
+            if(my_straightVehiclesMade > 0)
+            {
+                straight_averages[i] /= my_straightVehiclesMade;
+                if(my_sdvStraightVehiclesMade > 0)
+                {
+                    sdv_straight_averages[i] /= my_sdvStraightVehiclesMade;
+                }
+                hd_straight_averages[i] /= (my_straightVehiclesMade - my_sdvStraightVehiclesMade);
+            }
+
+            if(my_rightVehiclesMade > 0)
+            {
+                right_averages[i] /= my_rightVehiclesMade;
+                if(my_sdvRightVehiclesMade > 0)
+                {     
+                    sdv_right_averages[i] /= my_sdvRightVehiclesMade;
+                }
+                hd_right_averages[i] /= (my_rightVehiclesMade - my_sdvRightVehiclesMade);
+            }
+        }
+    }
+    
+}
+
+void Simulation::calculateTotalAverages(Vehicle* vehicle_)
+{
+    if(vehicle_->vehicleType() == SELF_DRIVING_CAR)
+    {
+        my_selfDrivingVehiclesMade++;
+    }
+    for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
+    {
+        switch(i)
+        {
+            case(TIME_THROUGH_INTERSECTION): 
+            {
+                averages[i] += vehicle_->totalTime();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    human_driving_averages[i] += vehicle_->totalTime();
+                }
+                else
+                {
+                    self_driving_averages[i] += vehicle_->totalTime();
+                }
+            }
+                break;
+            case(TIME_IN_INTERSECTION):
+            { 
+                averages[i] += vehicle_->timeInIntersection();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    human_driving_averages[i] += vehicle_->timeInIntersection();
+                }
+                else
+                {
+                    self_driving_averages[i] += vehicle_->timeInIntersection();
+                }
+            }
+                break;
+            case(TIME_AT_MAX_SPEED): 
+            {
+                averages[i] += vehicle_->timeAtMaxSpeed();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    human_driving_averages[i] += vehicle_->timeAtMaxSpeed();
+                }
+                else
+                {
+                    self_driving_averages[i] += vehicle_->timeAtMaxSpeed();
+                }
+            }
+                break;
+            case(TIME_STOPPED): 
+            {
+                averages[i] += vehicle_->timeStopped();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    human_driving_averages[i] += vehicle_->timeStopped();
+                }
+                else
+                {
+                    self_driving_averages[i] += vehicle_->timeStopped();
+                }
+            }
+                break;
+            case(TIME_BETWEEN_SPAWNS): continue; //already calculated
+                break;
+            case(FUEL_CONSUMPTION): 
+            {
+                averages[i] += vehicle_->fuelConsumed();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    human_driving_averages[i] += vehicle_->fuelConsumed();
+                }
+                else
+                {
+                    self_driving_averages[i] += vehicle_->fuelConsumed();
+                }
+            }
+                break;
+            case(CO2_EMISSIONS):
+            {
+                averages[i] += vehicle_->emissions();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    human_driving_averages[i] += vehicle_->emissions();
+                }
+                else
+                {
+                    self_driving_averages[i] += vehicle_->emissions();
+                }
+            }
+                break;
+            default: SWERRINT(i);
+        }
+    }
+}
+
+void Simulation::calculateLeftAverages(Vehicle* vehicle_)
+{
+    my_leftVehiclesMade++;
+    if(vehicle_->vehicleType() == SELF_DRIVING_CAR)
+    {
+        my_sdvLeftVehiclesMade++;
+    }
+    for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
+    {
+        switch(i)
+        {
+            case(TIME_THROUGH_INTERSECTION): 
+            {
+                left_averages[i] += vehicle_->totalTime();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_left_averages[i] += vehicle_->totalTime();
+                }
+                else
+                {
+                    sdv_left_averages[i] += vehicle_->totalTime();
+                }
+            }
+                break;
+            case(TIME_IN_INTERSECTION):
+            { 
+                left_averages[i] += vehicle_->timeInIntersection();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_left_averages[i] += vehicle_->timeInIntersection();
+                }
+                else
+                {
+                    sdv_left_averages[i] += vehicle_->timeInIntersection();
+                }
+            }
+                break;
+            case(TIME_AT_MAX_SPEED): 
+            {
+                left_averages[i] += vehicle_->timeAtMaxSpeed();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_left_averages[i] += vehicle_->timeAtMaxSpeed();
+                }
+                else
+                {
+                    sdv_left_averages[i] += vehicle_->timeAtMaxSpeed();
+                }
+            }
+                break;
+            case(TIME_STOPPED): 
+            {
+                left_averages[i] += vehicle_->timeStopped();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_left_averages[i] += vehicle_->timeStopped();
+                }
+                else
+                {
+                    sdv_left_averages[i] += vehicle_->timeStopped();
+                }
+            }
+                break;
+            case(TIME_BETWEEN_SPAWNS): continue; //already calculated
+                break;
+            case(FUEL_CONSUMPTION): 
+            {
+                left_averages[i] += vehicle_->fuelConsumed();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_left_averages[i] += vehicle_->fuelConsumed();
+                }
+                else
+                {
+                    sdv_left_averages[i] += vehicle_->fuelConsumed();
+                }
+            }
+                break;
+            case(CO2_EMISSIONS):
+            {
+                left_averages[i] += vehicle_->emissions();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_left_averages[i] += vehicle_->emissions();
+                }
+                else
+                {
+                    sdv_left_averages[i] += vehicle_->emissions();
+                }
+            }
+                break;
+            default: SWERRINT(i);
+        }
+    }
+}
+
+void Simulation::calculateStraightAverages(Vehicle* vehicle_)
+{
+    my_straightVehiclesMade++;
+    if(vehicle_->vehicleType() == SELF_DRIVING_CAR)
+    {
+        my_sdvStraightVehiclesMade++;
+    }
+    for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
+    {
+        switch(i)
+        {
+            case(TIME_THROUGH_INTERSECTION): 
+            {
+                straight_averages[i] += vehicle_->totalTime();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_straight_averages[i] += vehicle_->totalTime();
+                }
+                else
+                {
+                    sdv_straight_averages[i] += vehicle_->totalTime();
+                }
+            }
+                break;
+            case(TIME_IN_INTERSECTION):
+            { 
+                straight_averages[i] += vehicle_->timeInIntersection();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_straight_averages[i] += vehicle_->timeInIntersection();
+                }
+                else
+                {
+                    sdv_straight_averages[i] += vehicle_->timeInIntersection();
+                }
+            }
+                break;
+            case(TIME_AT_MAX_SPEED): 
+            {
+                straight_averages[i] += vehicle_->timeAtMaxSpeed();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_straight_averages[i] += vehicle_->timeAtMaxSpeed();
+                }
+                else
+                {
+                    sdv_straight_averages[i] += vehicle_->timeAtMaxSpeed();
+                }
+            }
+                break;
+            case(TIME_STOPPED): 
+            {
+                straight_averages[i] += vehicle_->timeStopped();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_straight_averages[i] += vehicle_->timeStopped();
+                }
+                else
+                {
+                    sdv_straight_averages[i] += vehicle_->timeStopped();
+                }
+            }
+                break;
+            case(TIME_BETWEEN_SPAWNS): continue; //already calculated
+                break;
+            case(FUEL_CONSUMPTION): 
+            {
+                straight_averages[i] += vehicle_->fuelConsumed();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_straight_averages[i] += vehicle_->fuelConsumed();
+                }
+                else
+                {
+                    sdv_straight_averages[i] += vehicle_->fuelConsumed();
+                }
+            }
+                break;
+            case(CO2_EMISSIONS):
+            {
+                straight_averages[i] += vehicle_->emissions();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_straight_averages[i] += vehicle_->emissions();
+                }
+                else
+                {
+                    sdv_straight_averages[i] += vehicle_->emissions();
+                }
+            }
+                break;
+            default: SWERRINT(i);
+        }
+    }
+}
+
+void Simulation::calculateRightAverages(Vehicle* vehicle_)
+{
+    my_rightVehiclesMade++;
+    if(vehicle_->vehicleType() == SELF_DRIVING_CAR)
+    {
+        my_sdvRightVehiclesMade++;
+    }
+    for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
+    {
+        switch(i)
+        {
+            case(TIME_THROUGH_INTERSECTION): 
+            {
+                right_averages[i] += vehicle_->totalTime();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_right_averages[i] += vehicle_->totalTime();
+                }
+                else
+                {
+                    sdv_right_averages[i] += vehicle_->totalTime();
+                }
+            }
+                break;
+            case(TIME_IN_INTERSECTION):
+            { 
+                right_averages[i] += vehicle_->timeInIntersection();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_right_averages[i] += vehicle_->timeInIntersection();
+                }
+                else
+                {
+                    sdv_right_averages[i] += vehicle_->timeInIntersection();
+                }
+            }
+                break;
+            case(TIME_AT_MAX_SPEED): 
+            {
+                right_averages[i] += vehicle_->timeAtMaxSpeed();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_right_averages[i] += vehicle_->timeAtMaxSpeed();
+                }
+                else
+                {
+                    sdv_right_averages[i] += vehicle_->timeAtMaxSpeed();
+                }
+            }
+                break;
+            case(TIME_STOPPED): 
+            {
+                right_averages[i] += vehicle_->timeStopped();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_right_averages[i] += vehicle_->timeStopped();
+                }
+                else
+                {
+                    sdv_right_averages[i] += vehicle_->timeStopped();
+                }
+            }
+                break;
+            case(TIME_BETWEEN_SPAWNS): continue; //already calculated
+                break;
+            case(FUEL_CONSUMPTION): 
+            {
+                right_averages[i] += vehicle_->fuelConsumed();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_right_averages[i] += vehicle_->fuelConsumed();
+                }
+                else
+                {
+                    sdv_right_averages[i] += vehicle_->fuelConsumed();
+                }
+            }
+                break;
+            case(CO2_EMISSIONS):
+            {
+                right_averages[i] += vehicle_->emissions();
+                if(vehicle_->vehicleType() == CAR)
+                {
+                    hd_right_averages[i] += vehicle_->emissions();
+                }
+                else
+                {
+                    sdv_right_averages[i] += vehicle_->emissions();
+                }
+            }
+                break;
+            default: SWERRINT(i);
         }
     }
 }
@@ -2062,13 +2519,143 @@ void Simulation::printResults()
 
     results << std::endl << std::endl;
 
+    results << "Total Vehicles: " << my_vehiclesMade << std::endl;
+    results << "Self-Driving Vehicle Percentage: " << (float)((float)my_selfDrivingVehiclesMade / (float)my_vehiclesMade) << std::endl;
+    results << "Human Driven Vehicle Percentage: " << (float)((float)(my_vehiclesMade - my_selfDrivingVehiclesMade) / (float)my_vehiclesMade) << std::endl;
+    results << std::endl;
+    results << "Left Vehicle Percentage: " << (float)((float)my_leftVehiclesMade / (float)my_vehiclesMade) << "\t";
+    if(my_leftVehiclesMade > 0)
+    {
+        results << (float)((float)my_sdvLeftVehiclesMade / (float)my_leftVehiclesMade) << "\t";
+        results << (float)((float)((float)my_leftVehiclesMade - (float)my_sdvLeftVehiclesMade) / (float)my_leftVehiclesMade) << std::endl;
+    } 
+    else
+    {
+        results << std::endl;
+    }
+
+    results << "Straight Vehicle Percentage: " << (float)((float)my_straightVehiclesMade / (float)my_vehiclesMade) << "\t";
+    if(my_straightVehiclesMade > 0)
+    {
+        results << (float)((float)my_sdvStraightVehiclesMade / (float)my_straightVehiclesMade) << "\t";
+        results << (float)(((float)my_straightVehiclesMade - (float)my_sdvStraightVehiclesMade) / (float)my_straightVehiclesMade) << std::endl;
+    } 
+    else
+    {
+        results << std::endl;
+    }
+
+    results << "Right Vehicle Percentage: " << (float)((float)my_rightVehiclesMade / (float)my_vehiclesMade) << "\t";
+    if(my_rightVehiclesMade > 0)
+    {
+        results << (float)((float)my_sdvRightVehiclesMade / (float)my_rightVehiclesMade) << "\t";
+        results << (float)((float)((float)my_rightVehiclesMade - (float)my_sdvRightVehiclesMade) / (float)my_rightVehiclesMade) << std::endl;
+    } 
+    else
+    {
+        results << std::endl;
+    }
+
+    results << std::endl << std::endl;
+
     for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
     {
-        results << AVERAGE_STR[i] << " " << AVERAGE_UNITS_STR[i] << ":\t" << averages[i] << std::endl; 
+        results << AVERAGE_STR[i] << " " << AVERAGE_UNITS_STR[i] << ":\t" << averages[i] << "\t";
+        if(i != TIME_BETWEEN_SPAWNS)
+        {
+            if(my_selfDrivingVehiclesMade > 0)
+            {
+                if(my_selfDrivingVehiclesMade == my_vehiclesMade)
+                {
+                    results << self_driving_averages[i] << "\t" << NOT_APPLICABLE << "\t";
+                }
+                else
+                {
+                    results << self_driving_averages[i] << "\t" << human_driving_averages[i] << "\t";
+                }
+            }
+            else
+            {
+                results << NOT_APPLICABLE << "\t" << human_driving_averages[i] << "\t";
+            }
+            
+
+            if(my_leftVehiclesMade > 0)
+            {
+                if(my_leftVehiclesMade == my_sdvLeftVehiclesMade)
+                {
+                    results << left_averages[i] << "\t" << sdv_left_averages[i] << "\t" << NOT_APPLICABLE << "\t";
+                }
+                else if(my_sdvLeftVehiclesMade > 0)
+                {
+                    results << left_averages[i] << "\t" << sdv_left_averages[i] << "\t" << hd_left_averages[i] << "\t";
+                }
+                else
+                {
+                    results << left_averages[i] << "\t" << NOT_APPLICABLE << "\t" << hd_left_averages[i] << "\t";
+                }
+            }
+            else
+            {
+                results << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t";
+            }
+
+            if(my_straightVehiclesMade > 0)
+            {   
+                if(my_straightVehiclesMade == my_sdvStraightVehiclesMade)
+                {
+                    results << straight_averages[i] << "\t" << sdv_straight_averages[i] << "\t" << NOT_APPLICABLE << "\t";
+                }
+                else if(my_sdvStraightVehiclesMade > 0)
+                {
+                    results << straight_averages[i] << "\t" << sdv_straight_averages[i] << "\t" << hd_straight_averages[i] << "\t";
+                }
+                else
+                {
+                    results << straight_averages[i] << "\t" << NOT_APPLICABLE << "\t" << hd_straight_averages[i] << "\t";
+                }
+            }
+            else
+            {
+                results << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t";
+            }
+
+            if(my_rightVehiclesMade > 0)
+            {
+                if(my_rightVehiclesMade == my_sdvRightVehiclesMade)
+                {
+                    results << right_averages[i] << "\t" << sdv_right_averages[i] << "\t" << NOT_APPLICABLE << "\t";
+                }
+                else if(my_sdvRightVehiclesMade > 0)
+                {
+                    results << right_averages[i] << "\t" << sdv_right_averages[i] << "\t" << hd_right_averages[i] << "\t";
+                }
+                else
+                {
+                    results << right_averages[i] << "\t" << NOT_APPLICABLE << "\t" << hd_right_averages[i] << "\t";
+                }
+            }
+            else
+            {
+                results << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t";
+            }
+        } 
+        else
+        {
+            //sdv total and hd total
+            results << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t";
+            //lefts
+            results << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t";
+            //straights
+            results << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t";
+            //rights
+            results << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t" << NOT_APPLICABLE << "\t";
+        }
+        results << std::endl;
     }
     results << std::endl << std::endl;
     results << "************************" << std::endl;
-    results << "Fuel Economy: " << GRADE_STR[fuelConsumptionGrade(averages[FUEL_CONSUMPTION])] << std::endl;
+    results << "Fuel Economy: " << GRADE_STR[fuelConsumptionGrade(human_driving_averages[FUEL_CONSUMPTION])] << std::endl;
     results << "************************" << std::endl;
     results.close();
 }

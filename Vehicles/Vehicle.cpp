@@ -7,6 +7,11 @@ Vehicle::Vehicle()
     //leave blank for initialization
 }
 
+Vehicle::Vehicle(uint32 number_, path path_, Lane* lane_)
+{
+    SWERRINT(number_<<3 + path_);
+}
+
 //the following should never be used
 Vehicle::Vehicle(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
 {
@@ -1293,12 +1298,19 @@ float Vehicle::distanceToStopComfortably()
 
 void Vehicle::consumeFuel()
 {
+    if(my_vehicleType == SELF_DRIVING_CAR)
+    {
+        SWERRINT(my_vehicleType);
+    }
     float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
     if(velocity_magnitude == 0 && (my_currentVelocity[x] != 0 || my_currentVelocity[y] != 0))
     {
         SWERRFLOAT(my_currentVelocity[x] != 0 ? my_currentVelocity[x] : my_currentVelocity[y]);
     }
-    my_totalFuelConsumption = (my_fuelConsumptionAtVelocity * velocity_magnitude) + my_idleFuelConsumption;
+    float gas_to_kgCO2 = 2.3 / 1000; //kg/ml
+    float fuel_used_at_step = ((my_fuelConsumptionAtVelocity * velocity_magnitude) + my_idleFuelConsumption) * simulation_params.time_step;
+    my_totalFuelConsumption += fuel_used_at_step;
+    my_totalEmissions += gas_to_kgCO2 * fuel_used_at_step;
 }
 
 //Printing funtions, no need for explanation
@@ -1514,4 +1526,9 @@ bool Vehicle::goingThroughLight()
 float Vehicle::fuelConsumed()
 {
     return my_totalFuelConsumption;
+}
+
+float Vehicle::emissions()
+{
+    return my_totalEmissions;
 }

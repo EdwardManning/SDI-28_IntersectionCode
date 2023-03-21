@@ -6,6 +6,7 @@
 #include "Common/CommonDefs.h"
 #include "Infrastructure/Intersection.h"
 #include "Vehicles/Car.h"
+#include "Vehicles/SelfDrivingCar.h"
 
 /*
 *   Name: Simulation
@@ -38,6 +39,10 @@ private:
     bool shoulderCheck(Vehicle* vehicle_, path lane_change_direction_);
     bool collisionAnalysis();
     void calculateAverages();
+    void calculateTotalAverages(Vehicle* vehicle_);
+    void calculateLeftAverages(Vehicle* vehicle_);
+    void calculateStraightAverages(Vehicle* vehicle_);
+    void calculateRightAverages(Vehicle* vehicle_);
     severity calculateCollisionSeverity(Vehicle* first_vehicle_, Vehicle* second_vehicle_);
     direction opposingDirection(direction direction_);
 
@@ -97,6 +102,13 @@ private:
     
     bool light_change_occured;
     uint32 my_vehiclesMade;
+    uint32 my_selfDrivingVehiclesMade;
+    uint32 my_leftVehiclesMade;
+    uint32 my_sdvLeftVehiclesMade;
+    uint32 my_straightVehiclesMade;
+    uint32 my_sdvStraightVehiclesMade;
+    uint32 my_rightVehiclesMade;
+    uint32 my_sdvRightVehiclesMade;
     long double elapsed_time; //Total time the simulation has been running
     Intersection my_intersection; //Holds the intersection information
     Vehicle* car; //Will be changed to a list later
@@ -105,6 +117,17 @@ private:
     //averages
     float average_time_between_spawn;
     float averages[TOTAL_AVERAGES];
+    float left_averages[TOTAL_AVERAGES];
+    float straight_averages[TOTAL_AVERAGES];
+    float right_averages[TOTAL_AVERAGES];
+    float self_driving_averages[TOTAL_AVERAGES];
+    float sdv_left_averages[TOTAL_AVERAGES];
+    float sdv_straight_averages[TOTAL_AVERAGES];
+    float sdv_right_averages[TOTAL_AVERAGES];
+    float human_driving_averages[TOTAL_AVERAGES];
+    float hd_left_averages[TOTAL_AVERAGES];
+    float hd_straight_averages[TOTAL_AVERAGES];
+    float hd_right_averages[TOTAL_AVERAGES];
 
     Vehicle** vehicle_list; //list of all vehicles (active and inactive)
     std::vector<Vehicle*> active_vehicles;
