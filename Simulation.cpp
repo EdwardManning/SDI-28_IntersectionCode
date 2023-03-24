@@ -171,6 +171,7 @@ bool Simulation::completionCheck()
     else if(return_value)
     {
         printResults();
+        std::cout << "Completed" << std::endl;
     }
     return return_value;
 }
@@ -188,6 +189,7 @@ bool Simulation::completionCheck()
 */
 void Simulation::driverPerformActions(Vehicle* vehicle_)
 {
+    bool start_turn = false;
     if(passedStopLine(vehicle_) && 
        !(vehicle_->currentState() & IN_INTERSECTION) &&
        !(vehicle_->currentState() & THROUGH_INTERSECTION))
@@ -225,6 +227,13 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         if (vehicle_->vehiclePath() != STRAIGHT)
         {
             changeState(vehicle_, TURNING, ADD);
+            if(simulation_params.print_debug_acceleration)
+            {
+                debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " has begun to turn with a velocity of ";
+                debug_log << vehicle_->currentVelocity()[x] << " " << vehicle_->currentVelocity()[y];
+                debug_log << " and state: " << (int)vehicle_->currentState() << std::endl;  
+                start_turn = true;
+            }
         }
     }
 
@@ -250,14 +259,33 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
                 changeState(vehicle_, TURNING, REMOVE);
                 vehicle_->stopTurn(my_intersection.getRoad(exit_direction)->getLane(vehicle_->laneNumber()));
             }
+            if(simulation_params.print_debug_acceleration)
+            {
+                debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                debug_log << " has exited the intersection with a velocity of: ";
+                debug_log << vehicle_->currentVelocity()[x] << " " << vehicle_->currentVelocity()[y];
+                debug_log << " and state: " << (int)vehicle_->currentState() << std::endl;  
+            }
         }
         else if (vehicle_->currentState() & TURNING)
         {
             vehicle_->turn();
+            if(simulation_params.print_debug_acceleration && start_turn)
+            {
+                debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " is turning with a velocity of ";
+                debug_log << vehicle_->currentVelocity()[x] << " " << vehicle_->currentVelocity()[y];
+                debug_log << " and state: " << (int)vehicle_->currentState() << std::endl;  
+            } 
         }
     }
 
     accelerate(vehicle_);
+    if(simulation_params.print_debug_acceleration && start_turn)
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " is turning with a velocity of ";
+        debug_log << vehicle_->currentVelocity()[x] << " " << vehicle_->currentVelocity()[y];
+        debug_log << " post acceleration, state: " << (int)vehicle_->currentState() << std::endl; 
+    }
     
     if(!(vehicle_->currentState() & CORRECT_LANE))
     {
@@ -303,6 +331,12 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
             }
         }
     }
+    if(simulation_params.print_debug_acceleration && start_turn)
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " is going into second acceleration with state: ";
+        debug_log << (int)vehicle_->currentState() << " and velocity: "; 
+        debug_log << vehicle_->currentVelocity()[x] << " " << vehicle_->currentVelocity()[y] << std::endl;
+    }
     if ((vehicle_->currentState() & ACCELERATING) | (vehicle_->currentState() & DECELERATING))
     {
         if(vehicle_->accelerate())
@@ -328,6 +362,13 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
                 SWERRINT(vehicle_->currentState());
             }
         }
+    }
+    if(simulation_params.print_debug_acceleration && start_turn)
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " is turning with a velocity of ";
+        debug_log << vehicle_->currentVelocity()[x] << " " << vehicle_->currentVelocity()[y];
+        debug_log << " post second acceleration, state: " << (int)vehicle_->currentState() << std::endl;
+        start_turn = false; 
     }
     if((MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]) < 0.005) &&
        (vehicle_->currentState() & DECELERATING))
@@ -839,7 +880,13 @@ void Simulation::accelerate(Vehicle* vehicle_)
     //         return;
     //     }
     // }
-
+    if(simulation_params.print_debug_acceleration && 
+      ((proximity_deceleration_distance_required != 0) ||
+      (light_deceleration_distance_required != 0)))
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " proximityDeceleration/lightAcceleration ";
+        debug_log << proximity_deceleration_distance_required << "/" << light_deceleration_distance_required << std::endl;
+    }
     if(vehicle_->currentState() & IN_INTERSECTION &&
        (my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != GREEN &&
        my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != YELLOW))
@@ -903,6 +950,24 @@ void Simulation::accelerate(Vehicle* vehicle_)
                         debug_log << elapsed_time << " Deceleration Rejected " << vehicle_->number() << "\t" << proximity_deceleration_distance_required << "\t" << __LINE__ << std::endl;
                         startAcceleration(vehicle_, vehicle_->maxSpeed());
                     }
+                    else
+                    {
+                        if(simulation_params.print_debug_acceleration)
+                        {
+                            debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                            debug_log << " is accelerating due to proximity: " << proximity_deceleration_distance_required;
+                            debug_log << "\t" << __LINE__  << std::endl;
+                        }
+                    }
+                }
+                else
+                {
+                    if(simulation_params.print_debug_acceleration)
+                    {
+                        debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                        debug_log << " is accelerating due to light: " << light_deceleration_distance_required;
+                        debug_log << "\t" << __LINE__  << std::endl;
+                    }
                 }
             }
             else
@@ -921,10 +986,28 @@ void Simulation::accelerate(Vehicle* vehicle_)
                             debug_log << elapsed_time << " Deceleration Rejected " << vehicle_->number() << "\t" << light_deceleration_distance_required << "\t" << __LINE__ << std::endl;
                             startAcceleration(vehicle_, vehicle_->maxSpeed());
                         }
+                        else
+                        {
+                            if(simulation_params.print_debug_acceleration)
+                            {
+                                debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                                debug_log << " is accelerating due to light: " << light_deceleration_distance_required;
+                                debug_log << "\t" << __LINE__  << std::endl;
+                            }
+                        }
                     }
                     else
                     {
                         startAcceleration(vehicle_, vehicle_->maxSpeed());
+                    }
+                }
+                else
+                {
+                    if(simulation_params.print_debug_acceleration)
+                    {
+                        debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                        debug_log << " is accelerating due to proximity: " << proximity_deceleration_distance_required;
+                        debug_log << "\t" << __LINE__  << std::endl;
                     }
                 }
             }
@@ -940,6 +1023,15 @@ void Simulation::accelerate(Vehicle* vehicle_)
                     debug_log << elapsed_time << " Deceleration Rejected " << vehicle_->number() << "\t" << light_deceleration_distance_required << "\t" << __LINE__ << std::endl;
                 }
                 startAcceleration(vehicle_, vehicle_->maxSpeed());
+            }
+            else
+            {
+                if(simulation_params.print_debug_acceleration)
+                {
+                    debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                    debug_log << " is accelerating due to light: " << light_deceleration_distance_required;
+                    debug_log << "\t" << __LINE__  << std::endl;
+                }
             }
         }
         else //both are zero
@@ -1109,7 +1201,16 @@ float Simulation::determineCloseProximityDecelerationDistance(Vehicle* vehicle_)
         SWERRFLOAT(brake_light_distance);
     }
     
-
+    if(simulation_params.print_debug_acceleration &&
+      ((close_vehicle_distance != 0) ||
+      (lane_change_distance != 0) ||
+      (brake_light_distance != 0)))
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+        debug_log << " close_vehicle_distance/lane_change_distance/brake_light_distance: ";
+        debug_log << close_vehicle_distance << "/" << lane_change_distance << "/" << brake_light_distance;
+        debug_log << std::endl;
+    }
     //here we are looking to return the lowest non-zero stopping distance
     if(close_vehicle_distance != 0) 
     {
@@ -1230,6 +1331,12 @@ float Simulation::distanceAhead(Vehicle* current_vehicle_, Vehicle* test_vehicle
     {
         float test_value = test_vehicle_->exteriorPosition(i)[dot];
         float test_result = test_vehicle_->exteriorPosition(i)[not_dot];
+        if(dot_modifier * (test_value - current_vehicle_->exteriorPosition(FRONT_RIGHT)[dot]) < 0)
+        {
+            //this was added so if there is a vehicle behind you it does not start the deceleration
+            //if you are headed in the negative direction then the 
+            continue;
+        }
         if(greater)
         {
             if((test_result > ((slope * test_value) + b_front_right)) &&
@@ -1546,10 +1653,22 @@ float Simulation::determineLightBasedDecelerationDistance(Vehicle* vehicle_)
     if(light_change_occured)
     {
         light_deceleration_distance = lightChangeDecelerationDistance(vehicle_);
+        if(simulation_params.print_debug_acceleration && (light_deceleration_distance != 0))
+        {
+            debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+            debug_log << " light change deceleration distance: ";
+            debug_log << light_deceleration_distance << std::endl;
+        }
     }
     else
     {
         light_deceleration_distance = lightColourDecelerationDistance(vehicle_);
+        if(simulation_params.print_debug_acceleration && (light_deceleration_distance != 0))
+        {
+            debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+            debug_log << " light colour deceleration distance: ";
+            debug_log << light_deceleration_distance << std::endl;
+        }
     }
 
     //if a light change occurs then lightChangeDecelerationDistance takes priority since it can determine weather or not a vehicle

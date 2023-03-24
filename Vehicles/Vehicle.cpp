@@ -417,7 +417,7 @@ bool Vehicle::accelerate(float target_speed_, float distance_remaining_)
             my_accelerationMagnitude = my_driver->comfortableDeceleration();
             my_currentAcceleration[x] = 0;
             my_currentAcceleration[y] = 0;
-            return true;
+            return false;
         }
         if(my_accelerationMagnitude > my_maxDeceleration)
         {
