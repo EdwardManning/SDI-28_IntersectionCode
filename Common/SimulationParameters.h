@@ -13,7 +13,7 @@ class SimulationParameters
 public:
     SimulationParameters();
     float time_step = 0.01;
-    uint32 number_of_vehicles = 10;
+    uint32 number_of_vehicles = 100;
     uint8 spawn_density = 1; //spawn chance at 5 seconds since the previous vehicle was spawned
     uint8 self_driving_vehicle_probability = 25;
     uint8 north_spawn_probability = 25;
@@ -23,6 +23,7 @@ public:
     bool print_simulation_events;
     bool print_vehicle_info;
     bool print_debug_info;
+    bool print_debug_acceleration;
 protected:
 private:
 };
