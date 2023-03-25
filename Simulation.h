@@ -93,6 +93,7 @@ private:
 
     //printing functions (note that changeState() is a partial printing function but not listed here)
     void printResults();
+    void printResultsForPython();
     void printCompletion(Vehicle* vehicle_);
     void printLaneChange(Vehicle* vehicle_, uint8 new_lane_);
     void printTrafficLightStateChange(TrafficLight* traffic_light_);
@@ -134,5 +135,6 @@ private:
 
     std::ofstream events; //used for printing events
     std::ofstream results; //used for printing results at end of simulation
+    std::ofstream python_results;
     std::ofstream debug_log; //used for printing non-swerr "unusual" behaviour
 };
