@@ -2,7 +2,7 @@
 
 VehicleParameters::VehicleParameters()
 {
-    print_velocieties = true;
-    print_accelerations = true;
-    print_exterior_coordinates = true;
+    print_velocieties = false;
+    print_accelerations = false;
+    print_exterior_coordinates = false;
 }

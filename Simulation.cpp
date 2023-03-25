@@ -171,6 +171,10 @@ bool Simulation::completionCheck()
     else if(return_value)
     {
         printResults();
+        if(simulation_params.print_results_for_python)
+        {
+            printResultsForPython();
+        }
         std::cout << "Completed" << std::endl;
     }
     return return_value;
@@ -2777,6 +2781,78 @@ void Simulation::printResults()
     results << "Fuel Economy: " << GRADE_STR[fuelConsumptionGrade(human_driving_averages[FUEL_CONSUMPTION])] << std::endl;
     results << "************************" << std::endl;
     results.close();
+}
+
+void Simulation::printResultsForPython()
+{
+    python_results.open("./Output/PythonResults.txt");
+    python_results << elapsed_time << std::endl;
+    python_results << (float)((float)my_selfDrivingVehiclesMade / (float)my_vehiclesMade) << std::endl;
+    python_results << (float)((float)(my_vehiclesMade - my_selfDrivingVehiclesMade) / (float)my_vehiclesMade) << std::endl;
+    python_results << (float)((float)my_leftVehiclesMade / (float)my_vehiclesMade) << std::endl;
+    if(my_leftVehiclesMade > 0)
+    {
+        python_results << (float)((float)my_sdvLeftVehiclesMade / (float)my_leftVehiclesMade) << std::endl;
+        python_results << (float)((float)((float)my_leftVehiclesMade - (float)my_sdvLeftVehiclesMade) / (float)my_leftVehiclesMade) << std::endl;
+    } 
+    else
+    {
+        python_results << 0 << std::endl;
+        python_results << 0 << std::endl;
+    }
+
+    python_results << (float)((float)my_straightVehiclesMade / (float)my_vehiclesMade) << std::endl;
+    if(my_straightVehiclesMade > 0)
+    {
+        python_results << (float)((float)my_sdvStraightVehiclesMade / (float)my_straightVehiclesMade) << std::endl;
+        python_results << (float)(((float)my_straightVehiclesMade - (float)my_sdvStraightVehiclesMade) / (float)my_straightVehiclesMade) << std::endl;
+    } 
+    else
+    {
+        python_results << 0 << std::endl;
+        python_results << 0 << std::endl;
+    }
+
+    python_results << (float)((float)my_rightVehiclesMade / (float)my_vehiclesMade) << std::endl;
+    if(my_rightVehiclesMade > 0)
+    {
+        python_results << (float)((float)my_sdvRightVehiclesMade / (float)my_rightVehiclesMade) << std::endl;
+        python_results << (float)((float)((float)my_rightVehiclesMade - (float)my_sdvRightVehiclesMade) / (float)my_rightVehiclesMade) << std::endl;
+    } 
+    else
+    {
+        python_results << 0 << std::endl;
+        python_results << 0 << std::endl;
+    }
+
+    for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
+    {
+        // python_results << averages[i] << "\t";
+        // python_results << self_driving_averages[i] << "\t";
+        // python_results << human_driving_averages[i] << "\t";
+        // python_results << left_averages[i] << "\t";
+        // python_results << sdv_left_averages[i] << "\t";
+        // python_results << hd_left_averages[i] << "\t";
+        // python_results << straight_averages[i] << "\t";
+        // python_results << sdv_straight_averages[i] << "\t";
+        // python_results << hd_straight_averages[i] << "\t";
+        // python_results << right_averages[i] << "\t";
+        // python_results << sdv_right_averages[i] << "\t";
+        // python_results << hd_right_averages[i] << std::endl;
+        python_results << averages[i] << std::endl;
+        python_results << self_driving_averages[i] << std::endl;
+        python_results << human_driving_averages[i] << std::endl;
+        python_results << left_averages[i] << std::endl;
+        python_results << sdv_left_averages[i] << std::endl;
+        python_results << hd_left_averages[i] << std::endl;
+        python_results << straight_averages[i] << std::endl;
+        python_results << sdv_straight_averages[i] << std::endl;
+        python_results << hd_straight_averages[i] << std::endl;
+        python_results << right_averages[i] << std::endl;
+        python_results << sdv_right_averages[i] << std::endl;
+        python_results << hd_right_averages[i] << std::endl;
+    }
+    python_results.close();
 }
 
 void Simulation::printLaneChange(Vehicle* vehicle_, uint8 new_lane_)
