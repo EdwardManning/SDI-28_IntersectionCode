@@ -77,6 +77,7 @@ public:
     bool goingThroughLight();
     float fuelConsumed();
     float emissions();
+    float* turnRadius();
 
     void toggleBlinker(path direction_, bool on_);
     void toggleBrakeLights(bool on_);

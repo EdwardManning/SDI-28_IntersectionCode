@@ -128,6 +128,22 @@ float Driver::setSlowingDistance()
     }
 }
 
+float Driver::setYellowMaxDeceleration()
+{
+    if(my_driverType == CALM)
+    {
+        return 2 * my_comfortableDeceleration;
+    }
+    else if (my_driverType == AGGRESSIVE)
+    {
+        return my_comfortableDeceleration + 0.75;
+    }
+    else
+    {
+        return 1.5 * my_comfortableDeceleration;
+    }
+}
+
 std::string Driver::name()
 {
     return my_name;
@@ -171,4 +187,9 @@ float Driver::minimumFollowingDistance()
 float Driver::minimumStoppingDistance()
 {
     return my_minStopDistance;
+}
+
+float Driver::yellowMaxDeceleration()
+{
+    return my_yellowMaxDeceleration;
 }

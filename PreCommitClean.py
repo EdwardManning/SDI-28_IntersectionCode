@@ -17,6 +17,7 @@ events_path = Path('./Output/Events.txt')
 formatted_results_path = Path('./Output/Results.txt')
 SWERR_path = Path('./Output/SwerrList.txt')
 vehicle_outputs_path = Path('./Output/VehicleOutput')
+completed_swerrs = Path('./Output/CompletionSwerrs.txt')
 
 DEFAULT_SWERR_STR = "SWERR Occurances:"
 
@@ -38,6 +39,8 @@ def cleanRepo():
         os.remove(second_output_path)
     if(debug_log_path.is_file()):
         os.remove(debug_log_path)
+    if(completed_swerrs.is_file()):
+        os.remove(completed_swerrs)
     if(events_path.is_file()):
         with open(events_path, "w") as f:
             print(end='', file=f)

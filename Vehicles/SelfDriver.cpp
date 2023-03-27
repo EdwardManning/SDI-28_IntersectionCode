@@ -16,4 +16,6 @@ SelfDriver::SelfDriver()
     my_slowingDistance = setSlowingDistance();
 
     my_reactionTime = generateReactionTime();
+
+    my_yellowMaxDeceleration = setYellowMaxDeceleration();
 }

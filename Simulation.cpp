@@ -901,11 +901,23 @@ void Simulation::accelerate(Vehicle* vehicle_)
 
     if(vehicle_->vehiclePath() == LEFT)
     {
+        bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+        int8 modifier = vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < vehicle_->exteriorPosition(BACK_BUMPER)[dot] ? -1 : 1;
+        float stop_position = vehicle_->stopLine() + (modifier * (vehicle_->turnRadius()[dot] - vehicle_->turnRadius()[!dot]));
+        float distance = modifier * (stop_position - vehicle_->exteriorPosition(FRONT_BUMPER)[dot]);
         if (vehicle_->currentState() & TURNING)
         {
             if(!checkTurnClear(vehicle_))
             {
-                startDeceleration(vehicle_, STOP);
+                if((modifier < 0 && (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < stop_position)) ||
+                   (modifier > 0 && vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > stop_position))
+                {
+                    startAcceleration(vehicle_, vehicle_->maxSpeed());
+                }
+                else
+                {
+                    startDeceleration(vehicle_, STOP, distance);
+                }
                 return;
             }
         }
@@ -919,13 +931,13 @@ void Simulation::accelerate(Vehicle* vehicle_)
                     if(proximity_deceleration_distance_required == 0 &&
                        light_deceleration_distance_required == 0)
                     {
-                        bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
-                        float distance = vehicle_->stopLine() - vehicle_->exteriorPosition(FRONT_BUMPER)[dot];
-                        if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < vehicle_->exteriorPosition(BACK_BUMPER)[dot])
-                        {
-                            distance *= -1;
-                        }
-                        distance += intersection_params.lane_width;
+                        // bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+                        // float distance = vehicle_->stopLine() - vehicle_->exteriorPosition(FRONT_BUMPER)[dot];
+                        // if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < vehicle_->exteriorPosition(BACK_BUMPER)[dot])
+                        // {
+                        //     distance *= -1;
+                        // }
+                        // distance += intersection_params.lane_width;
                         startDeceleration(vehicle_, STOP, distance);
                         return;
                     }
@@ -1654,7 +1666,9 @@ float Simulation::determineLightBasedDecelerationDistance(Vehicle* vehicle_)
     }
 
     float light_deceleration_distance;
-    if(light_change_occured)
+    if(light_change_occured && 
+      (my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != 
+       my_intersection.trafficLight()->previousLightColour(vehicle_->vehicleDirection())))
     {
         light_deceleration_distance = lightChangeDecelerationDistance(vehicle_);
         if(simulation_params.print_debug_acceleration && (light_deceleration_distance != 0))
@@ -1716,7 +1730,9 @@ float Simulation::lightColourDecelerationDistance(Vehicle* vehicle_)
         return 0;
     }
 
-    if(light_change_occured)
+    if(light_change_occured && 
+      (my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != 
+       my_intersection.trafficLight()->previousLightColour(vehicle_->vehicleDirection())))
     {
         SWERRINT(light_change_occured);
         return 0;
@@ -2582,7 +2598,7 @@ severity Simulation::calculateCollisionSeverity(Vehicle* first_vehicle_, Vehicle
         //corresponds to moderate or severe injury
         return MODERATE;
     }
-    else if (velocity_difference >= 30)
+    else if (velocity_difference >= 25)
     {
         //this is a head on collision on a standard road
         //corresponds to minor or moderate injury
@@ -2827,18 +2843,6 @@ void Simulation::printResultsForPython()
 
     for(uint8 i = 0; i < TOTAL_AVERAGES; i++)
     {
-        // python_results << averages[i] << "\t";
-        // python_results << self_driving_averages[i] << "\t";
-        // python_results << human_driving_averages[i] << "\t";
-        // python_results << left_averages[i] << "\t";
-        // python_results << sdv_left_averages[i] << "\t";
-        // python_results << hd_left_averages[i] << "\t";
-        // python_results << straight_averages[i] << "\t";
-        // python_results << sdv_straight_averages[i] << "\t";
-        // python_results << hd_straight_averages[i] << "\t";
-        // python_results << right_averages[i] << "\t";
-        // python_results << sdv_right_averages[i] << "\t";
-        // python_results << hd_right_averages[i] << std::endl;
         python_results << averages[i] << std::endl;
         python_results << self_driving_averages[i] << std::endl;
         python_results << human_driving_averages[i] << std::endl;
@@ -2899,6 +2903,7 @@ void Simulation::printCollisionInformation(Vehicle* first_vehicle_, Vehicle* sec
     collision << std::endl << std::endl << std::endl;
 
     collision << "Current Light State: " << LIGHT_EVENT_STATE_STR[my_intersection.trafficLight()->currentEvent()] << " (" << my_intersection.trafficLight()->state() <<")" << std::endl;
+    collision << "Time In Light State: " << my_intersection.trafficLight()->timer() << "/" << my_intersection.trafficLight()->currentEventDuration() << std::endl;
     collision << "Ran Light: " << first_vehicle_->goingThroughLight() << "\t" << second_vehicle_->goingThroughLight() << std::endl << std::endl;
 
     collision << "Number of Active Vehicles: " << active_vehicles.size() << std::endl;
@@ -2967,7 +2972,8 @@ void Simulation::printVehicleFailInformation(Vehicle* vehicle_)
 
     fail << std::endl << std::endl << std::endl;
 
-    fail << "Current Light State: " << LIGHT_EVENT_STATE_STR[my_intersection.trafficLight()->currentEvent()] << " (" << my_intersection.trafficLight()->state() <<")" << std::endl << std::endl;
+    fail << "Current Light State: " << LIGHT_EVENT_STATE_STR[my_intersection.trafficLight()->currentEvent()] << " (" << my_intersection.trafficLight()->state() <<")" << std::endl;
+    fail << "Time In Light State: " << my_intersection.trafficLight()->timer() << "/" << my_intersection.trafficLight()->currentEventDuration() << std::endl << std::endl;
 
     fail << "Number of Active Vehicles: " << active_vehicles.size() << std::endl;
     fail << "Number of Vehicles Made: " << my_vehiclesMade << std::endl << std::endl;

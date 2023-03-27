@@ -768,7 +768,18 @@ bool Vehicle::yellowLightAnalysis()
 {
     //only gets called before intersection
     //true causes slow down, false keeps going
-    return abs(stoppingDistance<float>(my_currentVelocity[my_dot], my_driver->comfortableDeceleration())) < abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][my_dot]);
+    bool dot = findComponent(my_exteriorPosition[FRONT_BUMPER], my_exteriorPosition[BACK_BUMPER]);
+    float distance_remaining = my_stopline - my_exteriorPosition[FRONT_BUMPER][dot];
+    float distance_to_stop = neededDistance(my_currentVelocity[dot], my_driver->yellowMaxDeceleration());
+    if(distance_remaining < 0)
+    {
+        distance_remaining *= -1;
+    }
+    if(distance_to_stop < 0)
+    {
+        distance_to_stop *= -1;
+    }
+    return distance_to_stop <= distance_remaining;
 }
 
 bool Vehicle::yellowLightAnalysis(float current_acceleration_)
@@ -782,7 +793,18 @@ bool Vehicle::redLightAnalysis()
 {
     //only gets called before intersection
     //true causes slow down, false keeps going
-    return abs(stoppingDistance<float>(my_currentVelocity[my_dot], my_maxDeceleration)) < abs(my_stopline - my_exteriorPosition[FRONT_BUMPER][my_dot]);
+    bool dot = findComponent(my_exteriorPosition[FRONT_BUMPER], my_exteriorPosition[BACK_BUMPER]);
+    float distance_remaining = my_stopline - my_exteriorPosition[FRONT_BUMPER][dot];
+    float distance_to_stop = neededDistance(my_currentVelocity[dot], my_maxDeceleration);
+    if(distance_remaining < 0)
+    {
+        distance_remaining *= -1;
+    }
+    if(distance_to_stop < 0)
+    {
+        distance_to_stop *= -1;
+    }
+    return distance_to_stop <= distance_remaining;
 }
 
 bool Vehicle::redLightAnalysis(float current_acceleration_)
@@ -1087,11 +1109,25 @@ void Vehicle::draw(bool initialization_)
     }
     else if(dot_velocity_magnitude != 0)
     {
+        // if(dot_velocity_magnitude < not_dot_velocity_magnitude)
+        // {
+        //     dot = not_dot;
+        //     not_dot = !dot;
+        //     SWERRINT(7);
+        // }
         theta = atan(not_dot_velocity_magnitude / dot_velocity_magnitude);
     }
     else
     {
-        SWERRFLOAT(my_currentVelocity[dot]);
+        if(my_currentVelocity[not_dot] == 0)
+        {
+            SWERRINT(my_state);
+        }
+        else
+        {
+            dot = not_dot;
+            not_dot = !dot;
+        }
         theta = 0;
     }
 
@@ -1531,4 +1567,9 @@ float Vehicle::fuelConsumed()
 float Vehicle::emissions()
 {
     return my_totalEmissions;
+}
+
+float* Vehicle::turnRadius()
+{
+    return my_turnRadius;
 }

@@ -2,6 +2,7 @@ from pathlib import Path
 from enum import IntEnum
 import subprocess
 import os
+import time
 
 STANDARD_SIMULATION_PARAMS = [1, 25]
 
@@ -105,6 +106,7 @@ simulation_params_input = Path('./Input/SimulationParamsInput.txt')
 events_path = Path('./Output/Events.txt')
 formatted_results_path = Path('./Output/Results.txt')
 SWERR_path = Path('./Output/SwerrList.txt')
+completed_swerrs = Path('./Output/CompletionSwerrs.txt')
 vehicle_outputs_path = Path('./Output/VehicleOutput')
 
 def readData():
@@ -185,9 +187,10 @@ def printTestOuptut(parameter_data_, filepath_):
 
 
 def scripting():
+    start_time = time.time()
     number_of_collisions = 0
     number_of_fails = 0
-    number_of_runs = 10
+    number_of_runs = 30
     run_number = 0
     total_runs = 0
     spawn_density_range = 5 #starts at 1 ends at value
@@ -208,6 +211,8 @@ def scripting():
         os.remove(test_output_path)
     if(second_output_path.is_file()):
         os.remove(second_output_path)
+    if(completed_swerrs.is_file()):
+        os.remove(completed_swerrs)
 
     data_list = []
     percent_completion_str = "%% complete"
@@ -229,11 +234,17 @@ def scripting():
                 if collision_text_path.is_file():
                     print("Collision Occured")
                     collision_data = []
+                    swerr_data = []
+                    with open(SWERR_path, "r") as swerrs:
+                        swerr_data = swerrs.readlines()
                     with open(collision_text_path, "r") as input:
                         collision_data = input.readlines()
                     with open(all_collisions_text_path, "a") as output:
                         for line in collision_data:
                             print(line, file=output, end='')
+                        print(file=output)
+                        for swerr in swerr_data:
+                            print(swerr, file=output, end='')
                         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
                     os.remove(collision_text_path)
                     number_of_collisions += 1
@@ -242,36 +253,51 @@ def scripting():
                 if fail_report_text_path.is_file():
                     print("Failure Occured")
                     failure_data = []
+                    fail_swerr_data = []
+                    with open(SWERR_path, "r") as swerrs:
+                        fail_swerr_data = swerrs.readlines()
                     with open(fail_report_text_path, "r") as input:
                         failure_data = input.readlines()
                     with open(all_fail_report_text_path, "a") as output:
                         for line in failure_data:
                             print(line, file=output, end='')
+                        print(file=output)
+                        for swerr in fail_swerr_data:
+                            print(swerr, file=output, end='')
                         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
                     os.remove(fail_report_text_path)
                     number_of_fails += 1
                     param_data.add_failure()
                 
                 if results_path.is_file():
+                    completion_swerr_data = []
+                    with open(SWERR_path, "r") as swerrs:
+                        completion_swerr_data = swerrs.readlines()
+                    with open(completed_swerrs, "a") as output:
+                        for swerr in completion_swerr_data:
+                            print(swerr, file=output, end='')
+                        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
                     processResults(param_data)
                     os.remove(results_path)
 
-            print(number_of_collisions)
-            print(number_of_fails)
+            print(param_data.number_of_collisions)
+            print(param_data.number_of_fails)
             print(run_number)
             param_data.finalize()
             data_list.append(param_data)
             run_number = 0
-            number_of_collisions = 0
-            number_of_fails = 0
             print()
     
+    print(number_of_collisions)
+    print(number_of_fails)
     print(total_runs)
+    print(time.time()-start_time)
 
 def basicScripting():
+    start_time = time.time()
     number_of_collisions = 0
     number_of_fails = 0
-    number_of_runs = 10
+    number_of_runs = 100
     run_number = 0
     spawn_density = STANDARD_SIMULATION_PARAMS[0]
     self_driving_vehicle_probability = STANDARD_SIMULATION_PARAMS[1]
@@ -290,6 +316,8 @@ def basicScripting():
         os.remove(test_output_path)
     if(second_output_path.is_file()):
         os.remove(second_output_path)
+    if(completed_swerrs.is_file()):
+        os.remove(completed_swerrs)
 
 
     param_data = data(spawn_density, self_driving_vehicle_probability)
@@ -304,11 +332,17 @@ def basicScripting():
         if collision_text_path.is_file():
             print("Collision Occured")
             collision_data = []
+            swerr_data = []
+            with open(SWERR_path, "r") as swerrs:
+                swerr_data = swerrs.readlines()
             with open(collision_text_path, "r") as input:
                 collision_data = input.readlines()
             with open(all_collisions_text_path, "a") as output:
                 for line in collision_data:
                     print(line, file=output, end='')
+                print(file=output)
+                for swerr in swerr_data:
+                    print(swerr, file=output, end='')
                 print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
             os.remove(collision_text_path)
             number_of_collisions += 1
@@ -317,17 +351,30 @@ def basicScripting():
         if fail_report_text_path.is_file():
             print("Failure Occured")
             failure_data = []
+            fail_swerr_data = []
+            with open(SWERR_path, "r") as swerrs:
+                fail_swerr_data = swerrs.readlines()
             with open(fail_report_text_path, "r") as input:
                 failure_data = input.readlines()
             with open(all_fail_report_text_path, "a") as output:
                 for line in failure_data:
                     print(line, file=output, end='')
+                print(file=output)
+                for swerr in fail_swerr_data:
+                    print(swerr, file=output, end='')
                 print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
             os.remove(fail_report_text_path)
             number_of_fails += 1
             param_data.add_failure()
         
         if results_path.is_file():
+            completion_swerr_data = []
+            with open(SWERR_path, "r") as swerrs:
+                completion_swerr_data = swerrs.readlines()
+            with open(completed_swerrs, "a") as output:
+                for swerr in completion_swerr_data:
+                    print(swerr, file=output, end='')
+                print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
             processResults(param_data)
             os.remove(results_path)
 
@@ -335,6 +382,7 @@ def basicScripting():
     print(number_of_fails)
     print(run_number)
     param_data.finalize()
+    print(time.time()-start_time)
     
-basicScripting()
-#scripting()
+#basicScripting()
+scripting()

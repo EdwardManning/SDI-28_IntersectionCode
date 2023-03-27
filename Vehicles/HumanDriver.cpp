@@ -16,4 +16,6 @@ HumanDriver::HumanDriver(DriverType driver_type)
     my_slowingDistance = setSlowingDistance();
 
     my_reactionTime = generateReactionTime();
+
+    my_yellowMaxDeceleration = setYellowMaxDeceleration();
 }

@@ -462,9 +462,9 @@ static bool findComponent(float first_value_, float second_value_)
     return second_value_ > first_value_;
 }
 
-static float neededAcceleration(float current_velocity_, float distance)
+static float neededAcceleration(float current_velocity_, float distance_)
 {
-    return (-1 * current_velocity_ * current_velocity_) / (2 * distance);
+    return (-1 * current_velocity_ * current_velocity_) / (2 * distance_);
 }
 
 static float neededDistance(float current_velocity_, float acceleration_)
