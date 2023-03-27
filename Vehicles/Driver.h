@@ -19,11 +19,13 @@ public:
     float comfortableDeceleration();
     float minimumStoppingDistance();
     float minimumFollowingDistance();
+    float yellowMaxDeceleration();
 protected:
     float generateComfortableDeceleration();
     float generateComfortableAcceleration();
     float generateReactionTime();
     float setSlowingDistance();
+    float setYellowMaxDeceleration();
     std::string my_name;
     DriverType my_driverType;
     float my_modifier;
@@ -33,5 +35,6 @@ protected:
     float my_minStopDistance;
     float my_comfortableDeceleration;
     float my_comfortableAcceleration;
+    float my_yellowMaxDeceleration;
 private:
 };

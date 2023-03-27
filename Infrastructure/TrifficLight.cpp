@@ -5,6 +5,7 @@ TrafficLight::TrafficLight(bool smart_)
     my_type = smart_;
     my_timer = 0;
     my_currentEventState = NS_MUTUAL_RED;
+    my_previousState = EAST_YELLOW_LIGHT + WEST_YELLOW_LIGHT; //corresponds to EWYellow
 
     changeEvent(my_currentEventState);
 
@@ -80,6 +81,79 @@ lightColour TrafficLight::currentLightColour(direction direction_)
                 return GREEN;
             }
             else if (my_currentState & WEST_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        default: SWERRINT(direction_);
+    }
+    return RED;
+}
+
+lightColour TrafficLight::previousLightColour(direction direction_)
+{
+    switch(direction_)
+    {
+        case(NORTH):
+        {
+            if (my_previousState & NORTH_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_previousState & NORTH_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        case(SOUTH):
+        {
+            if (my_previousState & SOUTH_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_previousState & SOUTH_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        case(EAST):
+        {
+            if (my_previousState & EAST_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_previousState & EAST_YELLOW_LIGHT)
+            {
+                return YELLOW;
+            }
+            else
+            {
+                return RED;
+            }
+        }
+            break;
+        case(WEST):
+        {
+            if (my_previousState & WEST_GREEN_LIGHT)
+            {
+                return GREEN;
+            }
+            else if (my_previousState & WEST_YELLOW_LIGHT)
             {
                 return YELLOW;
             }
@@ -203,6 +277,7 @@ void TrafficLight::changeState(lightState state_, bool add_)
 
 void TrafficLight::changeEvent(lightEventState event_)
 {
+    my_previousState = my_currentState;
     switch(event_)
     {
         case(NORTH_ADVANCED_GREEN):
@@ -345,6 +420,7 @@ void TrafficLight::changeEvent(lightEventState event_)
 
 void TrafficLight::changeEvent(lightEventState event_, float duration_)
 {
+    my_previousState = my_currentState;
     if (duration_ < 0)
     {
         SWERRFLOAT(duration_);
@@ -508,4 +584,14 @@ lightEventState TrafficLight::nextEvent()
 float TrafficLight::timer()
 {
     return my_timer;
+}
+
+float TrafficLight::currentEventDuration()
+{
+    return my_currentEvent->duration();
+}
+
+uint16 TrafficLight::previousState()
+{
+    return my_previousState;
 }
