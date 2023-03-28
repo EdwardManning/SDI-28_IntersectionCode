@@ -3,6 +3,7 @@ from enum import IntEnum
 import subprocess
 import os
 import time
+import matplotlib.pyplot as plt
 
 STANDARD_SIMULATION_PARAMS = [1, 25]
 
@@ -53,7 +54,7 @@ class data:
         self.number_of_simulations = 0
         self.number_of_collisions = 0
         self.number_of_fails = 0
-        self.number_of_data_points = [0 for x in range(AVERAGE_TYPES.TOTAL_AVERAGE_TYPES)]
+        self.number_of_data_points = [[0 for x in range(AVERAGE_TYPES.TOTAL_AVERAGE_TYPES)] for y in range(AVERAGES.TOTAL_AVERAGES)]
         self.simulation_results = [ 0 for x in range(RESULTS.TOTAL_RESULTS)]
         self.simulation_averages = [[0 for x in range(AVERAGE_TYPES.TOTAL_AVERAGE_TYPES)] for y in range(AVERAGES.TOTAL_AVERAGES)]
     
@@ -62,7 +63,7 @@ class data:
     
     def add_averages(self, average_, average_type_, data):
         self.simulation_averages[average_][average_type_] += data
-        self.number_of_data_points[average_type_] += 1
+        self.number_of_data_points[average_][average_type_] += 1
 
     def add_collision(self):
         self.number_of_collisions += 1
@@ -76,8 +77,8 @@ class data:
     def finalize_averages(self):
         for i in range(AVERAGES.TOTAL_AVERAGES):
             for j in range(AVERAGE_TYPES.TOTAL_AVERAGE_TYPES):
-                if(self.number_of_data_points[j] > 0):
-                    self.simulation_averages[i][j] /= self.number_of_data_points[j]
+                if(self.number_of_data_points[i][j] > 0):
+                    self.simulation_averages[i][j] /= self.number_of_data_points[i][j]
                 else:
                     if(self.simulation_averages[i][j] != 0):
                         print("Non-zero average for zero data points")
@@ -108,6 +109,7 @@ formatted_results_path = Path('./Output/Results.txt')
 SWERR_path = Path('./Output/SwerrList.txt')
 completed_swerrs = Path('./Output/CompletionSwerrs.txt')
 vehicle_outputs_path = Path('./Output/VehicleOutput')
+images_output_path = Path('./Output/Images')
 
 def readData():
     total_data = []
@@ -136,46 +138,46 @@ def processResults(paramaterized_data):
     results, average_values = readData()
     for i in range(RESULTS.TOTAL_RESULTS):
         paramaterized_data.add_results(i, results[i])
-
+        
     for x in range(AVERAGES.TOTAL_AVERAGES):
+        if (x == AVERAGES.TIME_BETWEEN_SPAWNS):
+            paramaterized_data.add_averages(x, AVERAGE_TYPES.AVERAGES, average_values[x][AVERAGE_TYPES.AVERAGES])
+            continue
         for y in range(AVERAGE_TYPES.TOTAL_AVERAGE_TYPES):
-            if x == AVERAGES.TIME_BETWEEN_SPAWNS and y != AVERAGE_TYPES.AVERAGES:
-                continue
-            else:
-                if (y == AVERAGE_TYPES.LEFT_AVERAGES):
-                    if (results[RESULTS.PERCENT_LEFT_VEHICLES] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.SDV_LEFT_AVERAGES):
-                    if(results[RESULTS.PERCENT_SDV_LEFT] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.HD_LEFT_AVERAGES):
-                    if(results[RESULTS.PERCENT_HDV_LEFT] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.STRAIGHT_AVERAGES):
-                    if (results[RESULTS.PERCENT_STRAIGHT_VEHICLES] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.SDV_STRAIGHT_AVERAGES):
-                    if(results[RESULTS.PERCENT_SDV_STRAIGHT] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.HD_STRAIGHT_AVERAGES):
-                    if(results[RESULTS.PERCENT_HDV_STRAIGHT] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.RIGHT_AVERAGES):
-                    if (results[RESULTS.PERCENT_RIGHT_VEHICLES] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.SDV_RIGHT_AVERAGES):
-                    if(results[RESULTS.PERCENT_SDV_RIGHT] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.HD_RIGHT_AVERAGES):
-                    if(results[RESULTS.PERCENT_HDV_RIGHT] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.SELF_DRIVING_AVERAGES):
-                    if(results[RESULTS.PERCENT_SDV] == 0.0):
-                        continue
-                elif (y == AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES):
-                    if(results[RESULTS.PERCENT_HDV] == 0.0):
-                        continue
-                paramaterized_data.add_averages(x, y, average_values[x][y])
+            if (y == AVERAGE_TYPES.LEFT_AVERAGES):
+                if (results[RESULTS.PERCENT_LEFT_VEHICLES] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.SDV_LEFT_AVERAGES):
+                if(results[RESULTS.PERCENT_SDV_LEFT] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.HD_LEFT_AVERAGES):
+                if(results[RESULTS.PERCENT_HDV_LEFT] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.STRAIGHT_AVERAGES):
+                if (results[RESULTS.PERCENT_STRAIGHT_VEHICLES] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.SDV_STRAIGHT_AVERAGES):
+                if(results[RESULTS.PERCENT_SDV_STRAIGHT] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.HD_STRAIGHT_AVERAGES):
+                if(results[RESULTS.PERCENT_HDV_STRAIGHT] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.RIGHT_AVERAGES):
+                if (results[RESULTS.PERCENT_RIGHT_VEHICLES] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.SDV_RIGHT_AVERAGES):
+                if(results[RESULTS.PERCENT_SDV_RIGHT] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.HD_RIGHT_AVERAGES):
+                if(results[RESULTS.PERCENT_HDV_RIGHT] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.SELF_DRIVING_AVERAGES):
+                if(results[RESULTS.PERCENT_SDV] == 0.0):
+                    continue
+            elif (y == AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES):
+                if(results[RESULTS.PERCENT_HDV] == 0.0):
+                    continue
+            paramaterized_data.add_averages(x, y, average_values[x][y])
 
 def printTestOuptut(parameter_data_, filepath_):
     with open(filepath_, "w") as f:
@@ -185,16 +187,44 @@ def printTestOuptut(parameter_data_, filepath_):
             for j in range(AVERAGE_TYPES.TOTAL_AVERAGE_TYPES):
                 print(parameter_data_.simulation_averages[i][j], file=f)
 
+def graphTravelTimeWRTLoad(data_, image_number_):
+    title = "Time Through Intersection vs. Load"
+    for i in range(len(data_)):
+        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.AVERAGES], marker='o', color='blue')
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),title+str(image_number_)+".png"),format="png", dpi=500)
+
+def graphTravelTimeWRTLoadPerVehicleType(data_, image_number_):
+    title = "Time Through Intersection vs Load"
+    for i in range(len(data_)):
+        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES], marker='o', color="red")
+        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.SELF_DRIVING_AVERAGES], marker='o', color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),title+"Per Vehicle Type"+str(image_number_)+".png"),format="png", dpi=500)
+
+def graphCollisionPercentPerLoad(data_, image_number_):
+    title = "Collision Percent vs Load"
+    for i in range(len(data_)):
+        percentage = data_[i].number_of_collisions / (data_[i].number_of_simulations - data_[i].number_of_fails)
+        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], percentage, marker='o', color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Percent Collisions")
+    plt.savefig(os.path.join(os.getcwd(),title+str(image_number_)+".png"),format="png", dpi=500)
 
 def scripting():
     start_time = time.time()
     number_of_collisions = 0
     number_of_fails = 0
-    number_of_runs = 30
+    number_of_runs = 100
     run_number = 0
     total_runs = 0
-    spawn_density_range = 5 #starts at 1 ends at value
-    self_driving_vehicle_probability_range = 26 #starts at 0 ends at value-1
+    spawn_density_range = 50 #starts at 1 ends at value
+    self_driving_vehicle_probability_range = 50 #starts at 0 ends at value-1
 
     #makes sure the output tree is clean before beginning
     if(collision_text_path.is_file()):
@@ -217,8 +247,8 @@ def scripting():
     data_list = []
     percent_completion_str = "%% complete"
 
-    for x in range(1, spawn_density_range + 1, 1):
-        for y in range(0, self_driving_vehicle_probability_range, 1):
+    for x in range(1, spawn_density_range + 1, 5):
+        for y in range(0, self_driving_vehicle_probability_range, 5):
             print(str(x) + " " + str(y))
             print(str((((((x - 1) * self_driving_vehicle_probability_range) + y) / (spawn_density_range * self_driving_vehicle_probability_range)) * 100)) + percent_completion_str)
             with open(simulation_params_input, "w") as params:
@@ -292,6 +322,9 @@ def scripting():
     print(number_of_fails)
     print(total_runs)
     print(time.time()-start_time)
+    graphTravelTimeWRTLoad(data_list, 1)
+    graphTravelTimeWRTLoadPerVehicleType(data_list, 1)
+    graphCollisionPercentPerLoad(data_list, 1)
 
 def basicScripting():
     start_time = time.time()
@@ -381,7 +414,9 @@ def basicScripting():
     print(number_of_collisions)
     print(number_of_fails)
     print(run_number)
+    #printTestOuptut(param_data, second_output_path)
     param_data.finalize()
+    printTestOuptut(param_data, test_output_path)
     print(time.time()-start_time)
     
 #basicScripting()
