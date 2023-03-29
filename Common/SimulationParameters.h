@@ -14,6 +14,7 @@ class SimulationParameters
 {
 public:
     SimulationParameters();
+    bool control_system = true;
     float time_step = 0.01;
     uint32 number_of_vehicles = 100;
     uint8 spawn_density; //spawn chance at 5 seconds since the previous vehicle was spawned

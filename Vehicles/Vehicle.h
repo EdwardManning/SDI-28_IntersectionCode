@@ -27,8 +27,8 @@ public:
 
     //important functions
     void drive();
-    bool accelerate();
-    void accelerate(float target_speed_);
+    virtual bool accelerate();
+    virtual void accelerate(float);
     bool accelerate(float target_speed_, float distance_remaining_);
     void changeLane(path direction_);
     void stopLaneChange();
@@ -40,6 +40,8 @@ public:
     bool checkImportantPosition(Vehicle* vehicle_);
     void setMaxSpeed(float new_max_speed_);
     void setCurrentSeparation(float separation_);
+    virtual bool forceRunLight();
+    virtual bool ignore();
 
     //less important functions
     void changeState(state state_, const bool adding_);
@@ -89,7 +91,6 @@ public:
     float distanceToStopComfortably();
 protected:
     void draw(bool initialization_ = false);
-    void draw(float value);
     void updateUnitVector();
     void adjustAccelerationMagnitude(float adjustment_, bool is_positive_);
     void adjustAccelerationMagnitude(float acceleration_magnitude_);
@@ -135,6 +136,7 @@ protected:
     float my_fuelConsumptionAtVelocity; //mL/m (mL/s / m/s)
     float my_totalFuelConsumption; //mL
     float my_totalEmissions;
+    bool my_ignoreStatus;
     std::ofstream info;
 private:
 };

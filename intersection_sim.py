@@ -109,7 +109,8 @@ formatted_results_path = Path('./Output/Results.txt')
 SWERR_path = Path('./Output/SwerrList.txt')
 completed_swerrs = Path('./Output/CompletionSwerrs.txt')
 vehicle_outputs_path = Path('./Output/VehicleOutput')
-images_output_path = Path('./Output/Images')
+images_output_path_str = "./Output/Images/"
+images_output_path = Path(images_output_path_str)
 
 def readData():
     total_data = []
@@ -194,38 +195,66 @@ def graphTravelTimeWRTLoad(data_, image_number_):
     plt.title(title, loc='right')
     plt.xlabel("Load [s]")
     plt.ylabel("Time [s]")
-    plt.savefig(os.path.join(os.getcwd(),title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
 
 def graphTravelTimeWRTLoadPerVehicleType(data_, image_number_):
-    title = "Time Through Intersection vs Load"
+    title = "Time Through Intersection vs. Load"
     for i in range(len(data_)):
         plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES], marker='o', color="red")
-        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.SELF_DRIVING_AVERAGES], marker='o', color="blue")
+        if(data_[i].simulation_results[RESULTS.PERCENT_SDV] != 0):
+            plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.SELF_DRIVING_AVERAGES], marker='o', color="blue")
     plt.title(title, loc='right')
     plt.xlabel("Load [s]")
     plt.ylabel("Time [s]")
-    plt.savefig(os.path.join(os.getcwd(),title+"Per Vehicle Type"+str(image_number_)+".png"),format="png", dpi=500)
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+"Per Vehicle Type"+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
 
 def graphCollisionPercentPerLoad(data_, image_number_):
-    title = "Collision Percent vs Load"
+    title = "Collision Percent vs. Load"
     for i in range(len(data_)):
         percentage = data_[i].number_of_collisions / (data_[i].number_of_simulations - data_[i].number_of_fails)
         plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], percentage, marker='o', color="blue")
     plt.title(title, loc='right')
     plt.xlabel("Load [s]")
     plt.ylabel("Percent Collisions")
-    plt.savefig(os.path.join(os.getcwd(),title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphTravelTimeWRTSDVPercent(data_, image_number_):
+    title = "Travel Time vs. Percent SDVs"
+    for i in range(len(data_)):
+        plt.plot(data_[i].simulation_results[RESULTS.PERCENT_SDV], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES], marker='o', color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Percent Self-Driving Vehicles")
+    plt.ylabel("Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphCompletionTimeWRTLoad(data_, image_number_):
+    title = "Completion Time vs. Load"
+    for i in range(len(data_)):
+        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_results[RESULTS.ELAPSED_TIME], marker='o', color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Completion Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
 
 def scripting():
     start_time = time.time()
     number_of_collisions = 0
     number_of_fails = 0
-    number_of_runs = 100
+    number_of_runs = 40
     run_number = 0
     total_runs = 0
-    spawn_density_range = 50 #starts at 1 ends at value
-    self_driving_vehicle_probability_range = 50 #starts at 0 ends at value-1
+    spawn_density_range = 101 #starts at 1 ends at value
+    self_driving_vehicle_probability_range = 100 #starts at 0 ends at value-1
+    spawn_density_increment = 5
+    self_driving_vehicle_probability_increment = 5
 
+    if(not os.path.exists(images_output_path)):
+        os.mkdir(images_output_path)
     #makes sure the output tree is clean before beginning
     if(collision_text_path.is_file()):
         os.remove(collision_text_path)
@@ -247,10 +276,19 @@ def scripting():
     data_list = []
     percent_completion_str = "%% complete"
 
-    for x in range(1, spawn_density_range + 1, 5):
-        for y in range(0, self_driving_vehicle_probability_range, 5):
+    
+    quantity_of_runs = 0
+    for x in range(1, spawn_density_range + 1, spawn_density_increment):
+        for y in range(0, self_driving_vehicle_probability_range + 1, self_driving_vehicle_probability_increment):
+            for z in range(number_of_runs):
+                quantity_of_runs += 1
+
+    print(quantity_of_runs)
+    
+    for x in range(1, spawn_density_range + 1, spawn_density_increment):
+        for y in range(0, self_driving_vehicle_probability_range + 1, self_driving_vehicle_probability_increment):
             print(str(x) + " " + str(y))
-            print(str((((((x - 1) * self_driving_vehicle_probability_range) + y) / (spawn_density_range * self_driving_vehicle_probability_range)) * 100)) + percent_completion_str)
+            print(str((total_runs / quantity_of_runs) * 100) + percent_completion_str)
             with open(simulation_params_input, "w") as params:
                 print(x, file=params)
                 print(y, file=params, end="")
@@ -325,6 +363,8 @@ def scripting():
     graphTravelTimeWRTLoad(data_list, 1)
     graphTravelTimeWRTLoadPerVehicleType(data_list, 1)
     graphCollisionPercentPerLoad(data_list, 1)
+    graphTravelTimeWRTSDVPercent(data_list, 1)
+    graphCompletionTimeWRTLoad(data_list, 1)
 
 def basicScripting():
     start_time = time.time()

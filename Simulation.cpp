@@ -283,7 +283,19 @@ void Simulation::driverPerformActions(Vehicle* vehicle_)
         }
     }
 
-    accelerate(vehicle_);
+    if(vehicle_->vehicleType() == CAR)
+    {
+        accelerate(vehicle_);
+    }
+    else if(vehicle_->vehicleType() == SELF_DRIVING_CAR)
+    {
+        sdv_accelerate(vehicle_);
+    }
+    else
+    {
+        SWERRINT(vehicle_->vehicleType());
+    }
+
     if(simulation_params.print_debug_acceleration && start_turn)
     {
         debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " is turning with a velocity of ";
@@ -1894,6 +1906,766 @@ void Simulation::changeDeceleration(Vehicle* vehicle_, float target_speed_, floa
             {
                 SWERRFLOAT(vehicle_->currentAccelerationMagnitude());
             }
+        }
+    }
+}
+
+//sdv acceleration code
+void Simulation::sdv_accelerate(Vehicle* vehicle_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return;
+    }
+
+    float close_proximity_deceleration_required = sdv_closeProximityDeceleration(vehicle_);
+    float light_based_deceleration_required = sdv_lightBasedDeceleration(vehicle_);
+    //float control_system_acceleration = sdv_controlSystemAcceleration(vehicle_);
+
+    if(close_proximity_deceleration_required < 0)
+    {
+        if(light_based_deceleration_required == 0)
+        {
+            SWERRFLOAT(close_proximity_deceleration_required);
+            close_proximity_deceleration_required *= -1;
+        }
+        else
+        {
+            close_proximity_deceleration_required = 0;
+        }
+    }
+
+    if(light_based_deceleration_required < 0)
+    {
+        if(close_proximity_deceleration_required == 0)
+        {
+            SWERRFLOAT(light_based_deceleration_required);
+            light_based_deceleration_required *= -1;
+        }
+        else
+        {
+            light_based_deceleration_required = 0;
+        }
+    }
+
+    // if(close_proximity_deceleration_required == 0 &&
+    //    light_based_deceleration_required == 0 && 
+    //    control_system_acceleration != 0)
+    // {
+    //     if(control_system_acceleration < 0)
+    //     {
+    //         control_system_acceleration *= -1;
+    //         sdv_startDeceleration(vehicle_, control_system_acceleration);
+    //     }
+    //     else
+    //     {
+    //         sdv_startAcceleration(vehicle_, control_system_acceleration);
+    //     }
+    // }
+
+    if(simulation_params.print_debug_acceleration && 
+      ((close_proximity_deceleration_required != 0) ||
+      (light_based_deceleration_required != 0)))
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " proximityDeceleration/lightAcceleration ";
+        debug_log << close_proximity_deceleration_required << "/" << light_based_deceleration_required << std::endl;
+    }
+
+    if(vehicle_->currentState() & IN_INTERSECTION &&
+       (my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != GREEN &&
+       my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != YELLOW))
+    {
+        sdv_startAcceleration(vehicle_);
+        return;
+    }
+
+    if(vehicle_->vehiclePath() == LEFT)
+    {
+        bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+        int8 modifier = vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < vehicle_->exteriorPosition(BACK_BUMPER)[dot] ? -1 : 1;
+        float stop_position = vehicle_->stopLine() + (modifier * (vehicle_->turnRadius()[dot] - vehicle_->turnRadius()[!dot]));
+        float distance = modifier * (stop_position - vehicle_->exteriorPosition(FRONT_BUMPER)[dot]);
+        if (vehicle_->currentState() & TURNING)
+        {
+            if(!checkTurnClear(vehicle_))
+            {
+                if((modifier < 0 && (vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < stop_position)) ||
+                   (modifier > 0 && vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > stop_position))
+                {
+                    sdv_startAcceleration(vehicle_);
+                }
+                else
+                {
+                    float acceleration_magnitude = neededAcceleration(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]), distance);
+                    if(acceleration_magnitude < 0)
+                    {
+                        acceleration_magnitude *= -1;
+                    }
+                    sdv_startDeceleration(vehicle_, acceleration_magnitude);
+                }
+                return;
+            }
+        }
+        else
+        {
+            if(!(vehicle_->currentState() & THROUGH_INTERSECTION))
+            {
+                if(!checkTurnClear(vehicle_) &&
+                   my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == GREEN)
+                {
+                    if(close_proximity_deceleration_required == 0 &&
+                       light_based_deceleration_required == 0)
+                    {
+                        float acceleration_magnitude = neededAcceleration(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]), distance);
+                        if(acceleration_magnitude < 0)
+                        {
+                            acceleration_magnitude *= -1;
+                        }
+                        sdv_startDeceleration(vehicle_, acceleration_magnitude);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+    if(vehicle_->currentState() & DRIVING)
+    {
+        if(close_proximity_deceleration_required > light_based_deceleration_required)
+        {
+            sdv_startDeceleration(vehicle_, close_proximity_deceleration_required);
+        }
+        else if(close_proximity_deceleration_required < light_based_deceleration_required)
+        {
+            sdv_startDeceleration(vehicle_, light_based_deceleration_required);
+        }
+        else if(close_proximity_deceleration_required == light_based_deceleration_required && close_proximity_deceleration_required != 0)
+        {
+            sdv_startDeceleration(vehicle_, close_proximity_deceleration_required);
+        }
+        else
+        {
+            sdv_startAcceleration(vehicle_);    
+        }
+    }
+    else
+    {
+        if(!(vehicle_->currentState() & IN_INTERSECTION) && !(vehicle_->currentState() & THROUGH_INTERSECTION))
+        {
+            bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+            int8 dot_modifier = vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > vehicle_->exteriorPosition(BACK_BUMPER)[dot] ? 1 : -1;
+
+            if(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == GREEN)
+            {
+                float distance_left = dot_modifier * (vehicle_->stopLine() - vehicle_->currentPosition()[dot]);
+                if(distance_left < vehicle_params.vehicle_length)
+                {
+                    //no car in front and green light
+                    sdv_startAcceleration(vehicle_); 
+                }
+                else
+                {
+                    if(close_proximity_deceleration_required == 0)
+                    {
+                        //car in front is accelerating into intersection
+                        sdv_startAcceleration(vehicle_); 
+                    }
+                }
+            }
+        }
+        else
+        {
+            if(close_proximity_deceleration_required == 0)
+            {
+                startAcceleration(vehicle_, vehicle_->maxSpeed());
+            }
+        }
+    }
+}
+
+float Simulation::sdv_closeProximityDeceleration(Vehicle *vehicle_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return 0;
+    }
+
+    float close_vehicle_deceleration = sdv_determineCloseVehicleDeceleration(vehicle_);
+    float lane_change_deceleration = 0;
+    float brake_light_deceleration = sdv_determineBrakeLightDeceleration(vehicle_);
+
+    if(!(vehicle_->currentState() & IN_INTERSECTION) &&
+       !(vehicle_->currentState() & THROUGH_INTERSECTION))
+    {
+        lane_change_deceleration = sdv_determineLaneChangeDeceleration(vehicle_);
+    }
+
+    try
+    {
+        if(std::isnan(close_vehicle_deceleration) || std::isinf(close_vehicle_deceleration))
+        {
+            //hard swerr
+            SWERRFLOAT(close_vehicle_deceleration);
+            SWERRFLOAT(lane_change_deceleration);
+            SWERRFLOAT(brake_light_deceleration);
+            throw impossible_value_fail();
+        }
+        if(std::isnan(lane_change_deceleration) || std::isinf(lane_change_deceleration))
+        {
+            //hard swerr
+            SWERRFLOAT(close_vehicle_deceleration);
+            SWERRFLOAT(lane_change_deceleration);
+            SWERRFLOAT(brake_light_deceleration);
+            throw impossible_value_fail();
+        }
+        if(std::isnan(brake_light_deceleration) || std::isinf(brake_light_deceleration))
+        {
+            //hard swerr
+            SWERRFLOAT(close_vehicle_deceleration);
+            SWERRFLOAT(lane_change_deceleration);
+            SWERRFLOAT(brake_light_deceleration);
+            throw impossible_value_fail();
+        }
+    }
+    catch(impossible_value_fail& ivf)
+    {
+        //hard swerr
+        SWERRSTR(ivf.what());
+        printVehicleFailInformation(vehicle_);
+        throw ivf;
+    }
+
+    if(simulation_params.print_debug_acceleration &&
+      ((close_vehicle_deceleration != 0) ||
+      (lane_change_deceleration != 0) ||
+      (brake_light_deceleration != 0)))
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+        debug_log << " close_vehicle_deceleration/lane_change_deceleration/brake_light_deceleration: ";
+        debug_log << close_vehicle_deceleration << "/" << lane_change_deceleration << "/" << brake_light_deceleration;
+        debug_log << std::endl;
+    }
+
+    if(close_vehicle_deceleration > lane_change_deceleration)
+    {
+        if(close_vehicle_deceleration > brake_light_deceleration)
+        {
+            return close_vehicle_deceleration;
+        }
+        else
+        {
+            return brake_light_deceleration;
+        }
+    }
+    else
+    {
+        if(lane_change_deceleration > brake_light_deceleration)
+        {
+            return lane_change_deceleration;
+        }
+        else
+        {
+            return brake_light_deceleration;
+        }
+    }
+}
+
+float Simulation::sdv_determineCloseVehicleDeceleration(Vehicle *vehicle_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return 0;
+    }
+
+    float minimum_nonzero_distance = 0;
+    float acceleration_magnitude = 0;
+    for(uint32 i = 0; i < active_vehicles.size(); i++)
+    {
+        if(active_vehicles[i] == vehicle_)
+        {
+            continue;
+        }
+        float distance_ahead = distanceAhead(vehicle_, active_vehicles[i]);
+        if(distance_ahead != 0)
+        {
+            if(minimum_nonzero_distance == 0 || distance_ahead < minimum_nonzero_distance)
+            {
+                minimum_nonzero_distance = distance_ahead;
+                float target_velocity = MAGNITUDE(active_vehicles[i]->currentVelocity()[x], active_vehicles[i]->currentVelocity()[y]);
+                float current_velocity = MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+                if(target_velocity <= current_velocity)
+                {
+                    acceleration_magnitude = neededAcceleration(target_velocity, current_velocity, minimum_nonzero_distance);
+                }
+            }
+            try
+            {
+                if(std::isnan(minimum_nonzero_distance) || std::isinf(minimum_nonzero_distance))
+                {
+                    //hard swerr
+                    SWERRINT(active_vehicles[i]->number());
+                    SWERRFLOAT(minimum_nonzero_distance);
+                    throw impossible_value_fail();
+                }
+                if(std::isnan(acceleration_magnitude) || std::isinf(acceleration_magnitude))
+                {
+                    //hard swerr
+                    SWERRINT(active_vehicles[i]->number());
+                    SWERRFLOAT(minimum_nonzero_distance);
+                    SWERRFLOAT(acceleration_magnitude);
+                    throw impossible_value_fail();
+                }
+            }
+            catch(impossible_value_fail& ivf)
+            {
+                //hard swerr
+                SWERRSTR(ivf.what());
+                printVehicleFailInformation(vehicle_);
+                throw ivf;
+            }
+            
+        }
+    }
+    if(acceleration_magnitude < 0)
+    {
+        acceleration_magnitude *= -1;
+    }
+    return acceleration_magnitude;
+}
+
+float Simulation::sdv_determineLaneChangeDeceleration(Vehicle *vehicle_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return 0;
+    }
+
+    if(vehicle_->currentState() & IN_INTERSECTION ||
+       vehicle_->currentState() & THROUGH_INTERSECTION)
+    {
+        SWERRINT(vehicle_->currentState());
+        return 0;
+    }
+
+    float changing_lane_deceleration = 0;
+    float close_lane_change_deceleration = sdv_determineCloseLaneChangeDeceleration(vehicle_);
+
+    if(!(vehicle_->currentState() * CORRECT_LANE))
+    {
+        changing_lane_deceleration = sdv_determineChangingLaneDecelereation(vehicle_);
+    }
+
+     if(changing_lane_deceleration < 0)
+    {
+        SWERRINT(vehicle_->number());
+    }
+    if(close_lane_change_deceleration < 0)
+    {
+        SWERRINT(my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->lanePath());
+    }
+
+    return changing_lane_deceleration > close_lane_change_deceleration ? changing_lane_deceleration : close_lane_change_deceleration;
+
+}
+
+float Simulation::sdv_determineChangingLaneDecelereation(Vehicle *vehicle_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return 0;
+    }
+
+    if(laneChangeDecelerationRequired(vehicle_))
+    {
+        float acceleration_magnitude = neededAcceleration(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]), vehicle_->distanceToStopComfortably());
+        if(acceleration_magnitude < 0)
+        {
+            acceleration_magnitude *= -1;
+        }
+        return acceleration_magnitude;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+float Simulation::sdv_determineCloseLaneChangeDeceleration(Vehicle *vehicle_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return 0;
+    }
+
+    path current_lane_path = my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber())->lanePath();
+    switch(current_lane_path)
+    {
+        case(LEFT):
+        {
+            return (sdv_determineLaneBlinkerRequiredAcceleration(vehicle_, my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber() + 1), 1));
+        }
+            break;
+        case(RIGHT):
+        {
+            return (sdv_determineLaneBlinkerRequiredAcceleration(vehicle_, my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber() - 1), -1));
+        }
+            break;
+        case(STRAIGHT):
+        {
+            float right_blinker_deceleration = sdv_determineLaneBlinkerRequiredAcceleration(vehicle_, my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber() + 1), 1);
+            float left_blinker_deceleration = sdv_determineLaneBlinkerRequiredAcceleration(vehicle_, my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber() - 1), -1);
+            return  right_blinker_deceleration > left_blinker_deceleration ? right_blinker_deceleration : left_blinker_deceleration;
+                   
+        }
+            break;
+        default: SWERRINT(current_lane_path);
+    }
+    return 0;
+}
+
+float Simulation::sdv_determineLaneBlinkerRequiredAcceleration(Vehicle *vehicle_, Lane *lane_, int8 direction_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return 0;
+    }
+
+    if(lane_->numberOfVehicles() < 1)
+    {
+        return false;
+    }
+    else
+    {
+        bool blinker_direction = direction_ > 0;
+        bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+        int8 modifier = vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > vehicle_->exteriorPosition(BACK_BUMPER)[dot] ? 1 : -1;
+        float separation = 0;
+        float acceleration_magnitude = 0;
+        for(uint32 i = 0; i < lane_->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[lane_->vehicleAtIndex(i)]->blinker(blinker_direction))
+            {
+                if (modifier > 0)
+                {
+                    if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] &&
+                       vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > (vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] - vehicle_->slowingDistance()))
+                    {
+                        float distance = vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] - vehicle_->exteriorPosition(FRONT_BUMPER)[dot];
+                        if(separation == 0 || distance < separation)
+                        {
+                            separation = distance;
+                            float target_velocity = MAGNITUDE(vehicle_list[lane_->vehicleAtIndex(i)]->currentVelocity()[x], vehicle_list[lane_->vehicleAtIndex(i)]->currentVelocity()[y]);
+                            float current_velocity = MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+                            acceleration_magnitude = neededAcceleration(target_velocity, current_velocity, separation);
+                        }
+                    }
+                }
+                else
+                {
+                    if(vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] &&
+                       vehicle_->exteriorPosition(FRONT_BUMPER)[dot] < (vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] + vehicle_->slowingDistance()))
+                    {
+                        float distance = vehicle_->exteriorPosition(FRONT_BUMPER)[dot] - vehicle_list[lane_->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot];
+                        if(separation == 0 || distance < separation)
+                        {
+                            separation = distance;
+                            float target_velocity = MAGNITUDE(vehicle_list[lane_->vehicleAtIndex(i)]->currentVelocity()[x], vehicle_list[lane_->vehicleAtIndex(i)]->currentVelocity()[y]);
+                            float current_velocity = MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]);
+                            acceleration_magnitude = neededAcceleration(target_velocity, current_velocity, separation);
+                        }
+                    }
+                }
+            }
+        }
+        if(acceleration_magnitude < 0)
+        {
+            acceleration_magnitude *= -1;
+        }
+        return acceleration_magnitude;
+    } 
+}
+
+float Simulation::sdv_determineBrakeLightDeceleration(Vehicle *vehicle_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return 0;
+    }
+
+    if(vehicle_->currentState() & IN_INTERSECTION)
+    {
+        return 0;
+    }
+
+    direction road_direction;
+
+    if(vehicle_->currentState() & THROUGH_INTERSECTION)
+    {
+        road_direction = my_intersection.getRoad(vehicle_->vehicleDirection())->correspondingExit(vehicle_->vehiclePath());
+    }
+    else
+    {
+        road_direction = vehicle_->vehicleDirection();
+    }
+
+    Lane* current_lane = my_intersection.getRoad(road_direction)->getLane(vehicle_->laneNumber());
+
+    bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+
+    float lowest_nonzero_distance = 0;
+    float target_velocity[2];
+
+    if(current_lane->numberOfVehicles() > 1)
+    {
+        for(uint32 i = 0; i < current_lane->numberOfVehicles(); i++)
+        {
+            if(current_lane->vehicleAtIndex(i) != vehicle_->number())
+            {
+                float distance_between = vehicle_->unitVector()[dot] * 
+                                         (vehicle_list[current_lane->vehicleAtIndex(i)]->exteriorPosition(BACK_BUMPER)[dot] - 
+                                         vehicle_->exteriorPosition(FRONT_BUMPER)[dot]);
+                if(distance_between > 0)
+                {
+                    if(lowest_nonzero_distance == 0 || lowest_nonzero_distance > distance_between)
+                    {
+                        lowest_nonzero_distance = distance_between;
+                        target_velocity[x] = vehicle_list[current_lane->vehicleAtIndex(i)]->currentVelocity()[x];
+                        target_velocity[y] = vehicle_list[current_lane->vehicleAtIndex(i)]->currentVelocity()[y];
+                    }
+                }
+            }
+        }
+    }
+    if(lowest_nonzero_distance == 0)
+    {
+        return 0;
+    }
+    float acceleration_magnitude;
+    if(lowest_nonzero_distance <= vehicle_->mimumumStoppingDistance())
+    {
+        acceleration_magnitude = neededAcceleration(MAGNITUDE(target_velocity[x], target_velocity[y]), MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]), lowest_nonzero_distance);
+        if(acceleration_magnitude < 0)
+        {
+            acceleration_magnitude *= -1;
+        }
+        return acceleration_magnitude;
+    }
+    lowest_nonzero_distance -= vehicle_->mimumumStoppingDistance();
+    acceleration_magnitude = neededAcceleration(MAGNITUDE(target_velocity[x], target_velocity[y]), MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]), lowest_nonzero_distance);
+    if(acceleration_magnitude < 0)
+    {
+        acceleration_magnitude *= -1;
+    }
+    return acceleration_magnitude;
+    if(lowest_nonzero_distance < 0)
+    {
+        //this will almost certainly result in a collision
+        SWERRINT(vehicle_->number());
+    }
+    return acceleration_magnitude;
+}
+
+float Simulation::sdv_lightBasedDeceleration(Vehicle *vehicle_)
+{
+    if(vehicle_->currentState() & IN_INTERSECTION ||
+       vehicle_->currentState() & THROUGH_INTERSECTION)
+    {
+        return 0;
+    }
+
+    float light_based_deceleration;
+    if(light_change_occured && 
+      (my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != 
+       my_intersection.trafficLight()->previousLightColour(vehicle_->vehicleDirection())))
+    {
+        light_based_deceleration = sdv_lightChangeDeceleration(vehicle_);
+        if(simulation_params.print_debug_acceleration && (light_based_deceleration != 0))
+        {
+            debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+            debug_log << " light change deceleration: ";
+            debug_log << light_based_deceleration << std::endl;
+        }
+    }
+    else
+    {
+        light_based_deceleration = sdv_lightColourDeceleration(vehicle_);
+        if(simulation_params.print_debug_acceleration && (light_based_deceleration != 0))
+        {
+            debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+            debug_log << " light colour deceleration: ";
+            debug_log << light_based_deceleration << std::endl;
+        }
+    }
+
+    return light_based_deceleration;
+}
+
+float Simulation::sdv_lightChangeDeceleration(Vehicle *vehicle_)
+{
+    if(!light_change_occured)
+    {
+        SWERRINT(light_change_occured);
+    }
+
+    bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+
+    int8 dot_modifier = vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > vehicle_->exteriorPosition(BACK_BUMPER)[dot] ? 1 : -1;
+
+    if(vehicle_->lightChange(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection())))
+    {
+        float distance = dot_modifier * (vehicle_->stopLine() - vehicle_->currentPosition()[dot]);
+        if(distance < 0)
+        {
+            SWERRINT(my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()));
+        }
+        float acceleration_magnitude = neededAcceleration(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]), distance);
+        if(acceleration_magnitude < 0)
+        {
+            acceleration_magnitude *= -1;
+        }
+        return acceleration_magnitude;
+    }
+    if(vehicle_->goingThroughLight() && simulation_params.print_debug_info)
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " is going through the light\t" << vehicle_->currentVelocity()[x] << "\t" << vehicle_->currentVelocity()[y] << "\t";
+        debug_log << dot_modifier * (vehicle_->stopLine() - vehicle_->currentPosition()[dot]) << std::endl;
+    }
+    return 0;
+}
+
+float Simulation::sdv_lightColourDeceleration(Vehicle *vehicle_)
+{
+    if(vehicle_->goingThroughLight())
+    {
+        return 0;
+    }
+
+    if(light_change_occured && 
+      (my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) != 
+       my_intersection.trafficLight()->previousLightColour(vehicle_->vehicleDirection())))
+    {
+        SWERRINT(light_change_occured);
+        return 0;
+    }
+
+    bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+
+    int8 dot_modifier = vehicle_->exteriorPosition(FRONT_BUMPER)[dot] > vehicle_->exteriorPosition(BACK_BUMPER)[dot] ? 1 : -1;
+
+    if (my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == YELLOW ||
+        my_intersection.trafficLight()->currentLightColour(vehicle_->vehicleDirection()) == RED)
+    {
+        float distance = dot_modifier * (vehicle_->stopLine() - vehicle_->currentPosition()[dot]);
+        try
+        {
+            if(std::isnan(distance) || std::isinf(distance))
+            {
+                //hard swerr
+                SWERRINT(vehicle_->stopLine());
+                SWERRFLOAT(distance);
+                throw impossible_value_fail();
+            }
+            
+        }
+        catch(impossible_value_fail& ivf)
+        {
+            //hard swerr
+            SWERRSTR(ivf.what());
+            printVehicleFailInformation(vehicle_);
+            throw ivf;
+        }
+        if(distance < 0)
+        {
+            if(!vehicle_->goingThroughLight())
+            {
+                SWERRINT(vehicle_->currentState());
+                SWERRINT(vehicle_->number());
+                SWERRINT(dot_modifier);
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        if(distance > intersection_params.lane_length)
+        {
+            SWERRFLOAT(distance);
+        }
+
+        float acceleration_magnitude = neededAcceleration(MAGNITUDE(vehicle_->currentVelocity()[x], vehicle_->currentVelocity()[y]), distance);
+        if(acceleration_magnitude < 0)
+        {
+            acceleration_magnitude *= -1;
+        }
+        return acceleration_magnitude;
+    }
+    return 0;
+}
+
+float Simulation::sdv_controlSystemAcceleration(Vehicle *vehicle_)
+{
+    return 0.0f;
+}
+
+void Simulation::sdv_startAcceleration(Vehicle* vehicle_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return;
+    }
+    sdv_startAcceleration(vehicle_, 0);
+}
+
+void Simulation::sdv_startAcceleration(Vehicle* vehicle_, float acceleration_magnitude_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return;
+    }
+    vehicle_->accelerate(acceleration_magnitude_);
+    if(!(vehicle_->currentState() & ACCELERATING))
+    {
+        changeState(vehicle_, ACCELERATING, ADD);
+    }
+    if(!(vehicle_->currentState() & DRIVING))
+    {
+        changeState(vehicle_, DRIVING, ADD);
+        vehicle_->toggleBrakeLights(OFF);
+    }
+    if(vehicle_->currentState() & DECELERATING)
+    {
+        changeState(vehicle_, DECELERATING, REMOVE);
+        vehicle_->toggleBrakeLights(OFF);
+    }
+}
+
+void Simulation::sdv_startDeceleration(Vehicle* vehicle_, float deceleration_magnitude_)
+{
+    if(vehicle_->vehicleType() != SELF_DRIVING_CAR)
+    {
+        SWERRINT(vehicle_->number());
+        return;
+    }
+    if(vehicle_->currentState() & DRIVING)
+    {
+        vehicle_->accelerate(deceleration_magnitude_);
+        if(!(vehicle_->currentState() & DECELERATING))
+        {
+            changeState(vehicle_, DECELERATING, ADD);
+            if(vehicle_->currentState() & ACCELERATING)
+            {
+                changeState(vehicle_, ACCELERATING, REMOVE);
+            }
+            vehicle_->toggleBrakeLights(ON);
         }
     }
 }

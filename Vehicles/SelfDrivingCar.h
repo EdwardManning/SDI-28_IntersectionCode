@@ -17,6 +17,12 @@ class SelfDrivingCar : public Vehicle
 public:
     SelfDrivingCar(uint32 number_, path path_, Lane* lane_);
     ~SelfDrivingCar();
+
+    bool accelerate();
+    void accelerate(float acceleration_magnitude_);
+
+    bool forceRunLight();
+    bool ignore();
 protected:
     void consumeFuel();
 private:
