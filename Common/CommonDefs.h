@@ -467,6 +467,11 @@ static float neededAcceleration(float current_velocity_, float distance_)
     return (-1 * current_velocity_ * current_velocity_) / (2 * distance_);
 }
 
+static float neededAcceleration(float target_velocity_, float current_velocity_, float distance_)
+{
+    return ((target_velocity_ * target_velocity_) - (current_velocity_ * current_velocity_)) / (2 * distance_);
+}
+
 static float neededDistance(float current_velocity_, float acceleration_)
 {
     return (-1 * current_velocity_ * current_velocity_) / (2 * acceleration_);

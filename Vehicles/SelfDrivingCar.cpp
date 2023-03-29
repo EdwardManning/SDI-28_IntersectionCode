@@ -1,4 +1,5 @@
 #include "./SelfDrivingCar.h"
+#include "SelfDrivingCar.h"
 
 SelfDrivingCar::SelfDrivingCar(uint32 number_, path path_, Lane* lane_)
 {
@@ -15,6 +16,7 @@ SelfDrivingCar::SelfDrivingCar(uint32 number_, path path_, Lane* lane_)
     my_maxDeceleration = 7;
     my_accelerationMagnitude = 0;
     my_currentSeparation = -1;
+    my_ignoreStatus = false;
 
     my_brakeLights = 0;
     my_blinker[0] = 0;
@@ -181,6 +183,173 @@ SelfDrivingCar::~SelfDrivingCar()
     {
         info.close();
     }
+}
+
+bool SelfDrivingCar::accelerate()
+{
+    bool acceleration_complete = false;
+    if((my_state & ACCELERATING) && (my_state & DECELERATING))
+    {   
+        //hard swerr
+        SWERRINT(my_state);
+        return true;
+    }
+
+    bool dot = findComponent(my_exteriorPosition[FRONT_BUMPER], my_exteriorPosition[BACK_BUMPER]);
+    bool not_dot = !dot;
+
+    float theta;
+
+    if (my_currentVelocity[dot] != 0 || my_currentVelocity[not_dot] != 0)
+    {
+        updateUnitVector();
+    }
+
+     if (my_currentVelocity[dot] == 0 || my_currentVelocity[not_dot] == 0)
+    {
+        theta = 0;
+    }
+    else
+    {
+        theta = atan(my_currentVelocity[not_dot] / my_currentVelocity[dot]);
+    }
+
+    float cos_theta = cos(theta);
+    float sin_theta = sin(theta);
+
+    cos_theta *= cos_theta < 0 ? -1 : 1;
+    sin_theta *= sin_theta < 0 ? -1 : 1;
+
+    my_currentAcceleration[dot] = my_accelerationMagnitude * cos_theta;
+    my_currentAcceleration[not_dot] = my_accelerationMagnitude * sin_theta;
+
+    bool dot_positive;
+    bool not_dot_positive;
+
+    if((my_currentVelocity[dot] == 0) && (my_currentVelocity[not_dot] == 0))
+    {
+        dot_positive = my_unitVector[dot] >= 0;
+        not_dot_positive = my_unitVector[not_dot] >= 0;
+    }
+    else
+    {
+        dot_positive = isPositive<float>(my_currentVelocity[dot]);
+        not_dot_positive = isPositive<float> (my_currentVelocity[not_dot]);
+    }
+
+    if(my_state & ACCELERATING)
+    {
+        if (dot_positive)
+        {
+            my_currentVelocity[dot] += my_currentAcceleration[dot] * simulation_params.time_step;
+        }
+        else
+        {
+            my_currentVelocity[dot] -= my_currentAcceleration[dot] * simulation_params.time_step;
+        }
+        if (not_dot_positive)
+        {
+            my_currentVelocity[not_dot] += my_currentAcceleration[not_dot] * simulation_params.time_step;
+        }
+        else
+        {
+            my_currentVelocity[not_dot] -= my_currentAcceleration[not_dot] * simulation_params.time_step;
+        }
+        float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+        if(velocity_magnitude >= my_maxSpeed)
+        {
+            if (dot_positive)
+                {
+                    my_currentVelocity[dot] =  my_maxSpeed * cos_theta;
+                }
+                else
+                {
+                    my_currentVelocity[dot] = -1 * my_maxSpeed * cos_theta;
+                }
+                if (not_dot_positive)
+                {
+                    my_currentVelocity[not_dot] =  my_maxSpeed * sin_theta;
+                }
+                else
+                {
+                    my_currentVelocity[not_dot] = -1 * my_maxSpeed * sin_theta;
+                }
+                my_accelerationMagnitude = 0;
+                my_currentAcceleration[dot] = 0;
+                my_currentAcceleration[not_dot] = 0;
+                acceleration_complete = true;
+        }
+    }
+    else if(my_state & DECELERATING)
+    {
+        if (dot_positive)
+        {
+            my_currentVelocity[dot] -= my_currentAcceleration[dot] * simulation_params.time_step;
+        }
+        else
+        {
+            my_currentVelocity[dot] += my_currentAcceleration[dot] * simulation_params.time_step;
+        }
+        if (not_dot_positive)
+        {
+            my_currentVelocity[not_dot] -= my_currentAcceleration[not_dot] * simulation_params.time_step;
+        }
+        else
+        {
+            my_currentVelocity[not_dot] += my_currentAcceleration[not_dot] * simulation_params.time_step;
+        }
+        float velocity_magnitude = MAGNITUDE(my_currentVelocity[x], my_currentVelocity[y]);
+        if((velocity_magnitude - my_accelerationMagnitude * simulation_params.time_step) <= 0.0001)
+            {
+                my_currentVelocity[dot] = 0;
+                my_currentVelocity[not_dot] = 0;
+                my_accelerationMagnitude = 0;
+                my_currentAcceleration[dot] = 0;
+                my_currentAcceleration[not_dot] = 0;
+                acceleration_complete = true;
+            }
+    }
+    else
+    {
+        SWERRINT(my_state);
+        return true;
+    }
+    if (acceleration_complete)
+    {
+        if(my_accelerationMagnitude != 0)
+        {
+            SWERRFLOAT(my_accelerationMagnitude);
+        }
+    }
+    return acceleration_complete;
+}
+
+void SelfDrivingCar::accelerate(float acceleration_magnitude_)
+{
+    if(acceleration_magnitude_ < 0)
+    {
+        SWERRFLOAT(acceleration_magnitude_);
+        acceleration_magnitude_ *= -1;
+    }
+    if(acceleration_magnitude_ == 0)
+    {
+        my_accelerationMagnitude = my_driver->comfortableAcceleration();
+    }
+    else
+    {
+        my_accelerationMagnitude = acceleration_magnitude_;
+    }
+}
+
+bool SelfDrivingCar::forceRunLight()
+{
+    my_runningLight = true;
+    return true;
+}
+
+bool SelfDrivingCar::ignore()
+{
+    return my_ignoreStatus;
 }
 
 void SelfDrivingCar::consumeFuel()

@@ -18,6 +18,8 @@ formatted_results_path = Path('./Output/Results.txt')
 SWERR_path = Path('./Output/SwerrList.txt')
 vehicle_outputs_path = Path('./Output/VehicleOutput')
 completed_swerrs = Path('./Output/CompletionSwerrs.txt')
+images_output_path_str = "./Output/Images/"
+images_output_path = Path(images_output_path_str)
 
 DEFAULT_SWERR_STR = "SWERR Occurances:"
 
@@ -57,6 +59,12 @@ def cleanRepo():
         with open(simulation_params_input, "w") as f:
             print(STANDARD_SIMULATION_PARAMS[0], file=f)
             print(STANDARD_SIMULATION_PARAMS[1], end='', file=f)
+    if(os.path.isdir(images_output_path)):
+        remove_path = input("Image File Present, would you like to delete it? (make sure all relevent data is saved first) (y/n) ")
+        if(remove_path == 'y'):
+            shutil.rmtree(images_output_path)
+        else:
+            print(images_output_path_str + " was not removed.")
             
 cleanRepo()
 

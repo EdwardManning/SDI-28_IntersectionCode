@@ -82,6 +82,33 @@ private:
     void changeDeceleration(Vehicle* vehicle_, float target_speed_);
     void changeDeceleration(Vehicle* vehicle_, float target_speed_, float distance_remaining_);
     //}
+
+    //self driving acceleration code
+    void sdv_accelerate(Vehicle* vehicle_);
+    //{
+    float sdv_closeProximityDeceleration(Vehicle* vehicle_);
+        //{
+    float sdv_determineCloseVehicleDeceleration(Vehicle* vehicle_);
+    float sdv_determineLaneChangeDeceleration(Vehicle* vehicle_);
+            //{
+    float sdv_determineChangingLaneDecelereation(Vehicle* vehicle_);
+    float sdv_determineCloseLaneChangeDeceleration(Vehicle* vehicle_);
+                //{
+    float sdv_determineLaneBlinkerRequiredAcceleration(Vehicle* vehicle_, Lane* lane_, int8 direction_);
+                //}
+            //}
+    float sdv_determineBrakeLightDeceleration(Vehicle* vehicle_);
+        //}
+    float sdv_lightBasedDeceleration(Vehicle* vehicle_);
+        //{
+    float sdv_lightChangeDeceleration(Vehicle* vehicle_);
+    float sdv_lightColourDeceleration(Vehicle* vehicle_);
+        //}
+    float sdv_controlSystemAcceleration(Vehicle* vehicle_);
+    //}
+    void sdv_startAcceleration(Vehicle* vehicle_);
+    void sdv_startAcceleration(Vehicle* vehicle_, float acceleration_magnitude_);
+    void sdv_startDeceleration(Vehicle* vehicle_, float deceleration_magnitude_);
     
 
     //active vehicles functions
