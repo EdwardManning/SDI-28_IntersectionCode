@@ -4,8 +4,11 @@ import subprocess
 import os
 import time
 import matplotlib.pyplot as plt
+import numpy as np
 
 STANDARD_SIMULATION_PARAMS = [1, 25]
+
+LINE_STR = "Line"
 
 class AVERAGES(IntEnum):
     TIME_THROUGH_INTERSECTION = 0
@@ -190,68 +193,184 @@ def printTestOuptut(parameter_data_, filepath_):
 
 def graphTravelTimeWRTLoad(data_, image_number_):
     title = "Time Through Intersection vs. Load"
+    x_at_i = [0 for x in range(len(data_))]
+    y_at_i = [0 for y in range(len(data_))]
     for i in range(len(data_)):
-        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.AVERAGES], marker='o', color='blue')
+        x_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x_at_i[i], y_at_i[i], marker='o', color='blue')
     plt.title(title, loc='right')
     plt.xlabel("Load [s]")
     plt.ylabel("Time [s]")
     plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
     plt.close()
+    a1, b1 = np.polyfit(x_at_i, y_at_i, 1)
+    x_range = np.linspace(min(x_at_i), max(x_at_i), 50)
+    plt.plot(x_range, a1 * x_range + b1, color="red")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
 
 def graphTravelTimeWRTLoadPerVehicleType(data_, image_number_):
     title = "Time Through Intersection vs. Load"
+    x_at_i = [0 for x in range(len(data_))]
+    y1_at_i = [0 for y in range(len(data_))]
+    y2_at_i = [0 for y in range(len(data_))]
     for i in range(len(data_)):
-        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES], marker='o', color="red")
+        x_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y1_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES]
+        plt.plot(x_at_i[i], y1_at_i[i], marker='o', color="red", label="Human-Driving")
         if(data_[i].simulation_results[RESULTS.PERCENT_SDV] != 0):
-            plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.SELF_DRIVING_AVERAGES], marker='o', color="blue")
+            y2_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.SELF_DRIVING_AVERAGES]
+            plt.plot(x_at_i[i], y2_at_i[i], marker='o', color="blue", label="Self-Driving")
     plt.title(title, loc='right')
     plt.xlabel("Load [s]")
     plt.ylabel("Time [s]")
     plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+"Per Vehicle Type"+str(image_number_)+".png"),format="png", dpi=500)
     plt.close()
+    a1, b1 = np.polyfit(x_at_i, y1_at_i, 1)
+    a2, b2 = np.polyfit(x_at_i, y2_at_i, 1)
+    x_range = np.linspace(min(x_at_i), max(x_at_i), 50)
+    plt.plot(x_range, a1 * x_range + b1, color="red", label="Human-Driving")
+    plt.plot(x_range, a2 * x_range + b2, color="blue", label="Self-Driving")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time [s]")
+    plt.legend()
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+"Per Vehicle Type"+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
 
 def graphCollisionPercentPerLoad(data_, image_number_):
     title = "Collision Percent vs. Load"
+    percentages = [0 for x in range(len(data_))]
+    x_at_i = [0 for x in range(len(data_))]
     for i in range(len(data_)):
-        percentage = data_[i].number_of_collisions / (data_[i].number_of_simulations - data_[i].number_of_fails)
-        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], percentage, marker='o', color="blue")
+        percentages[i] = data_[i].number_of_collisions / (data_[i].number_of_simulations - data_[i].number_of_fails)
+        x_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x_at_i[i], percentages[i], marker='o', color="blue")
     plt.title(title, loc='right')
     plt.xlabel("Load [s]")
     plt.ylabel("Percent Collisions")
     plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
     plt.close()
+    a1, b1 = np.polyfit(x_at_i, percentages, 1)
+    x_range = np.linspace(min(x_at_i), max(x_at_i), 50)
+    plt.plot(x_range, a1 * x_range + b1, color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Percent Collisions")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
 
 def graphTravelTimeWRTSDVPercent(data_, image_number_):
     title = "Travel Time vs. Percent SDVs"
+    x_at_i = [0 for x in range(len(data_))]
+    y_at_i = [0 for y in range(len(data_))]
     for i in range(len(data_)):
-        plt.plot(data_[i].simulation_results[RESULTS.PERCENT_SDV], data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES], marker='o', color="blue")
+        x_at_i[i] = data_[i].simulation_results[RESULTS.PERCENT_SDV]
+        y_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x_at_i[i], y_at_i[i], marker='o', color="blue")
     plt.title(title, loc='right')
     plt.xlabel("Percent Self-Driving Vehicles")
     plt.ylabel("Time [s]")
     plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
     plt.close()
+    a1, b1 = np.polyfit(x_at_i, y_at_i, 1)
+    x_range = np.linspace(min(x_at_i), max(x_at_i), 50)
+    plt.plot(x_range, a1 * x_range + b1, color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Percent Self-Driving Vehicles")
+    plt.ylabel("Completion Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
 
 def graphCompletionTimeWRTLoad(data_, image_number_):
     title = "Completion Time vs. Load"
+    x_at_i = [0 for x in range(len(data_))]
+    y_at_i = [0 for y in range(len(data_))]
     for i in range(len(data_)):
-        plt.plot(data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES], data_[i].simulation_results[RESULTS.ELAPSED_TIME], marker='o', color="blue")
+        x_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y_at_i[i] = data_[i].simulation_results[RESULTS.ELAPSED_TIME]
+        plt.plot(x_at_i[i], y_at_i[i], marker='o', color="blue")
     plt.title(title, loc='right')
     plt.xlabel("Load [s]")
     plt.ylabel("Completion Time [s]")
     plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
     plt.close()
+    a1, b1 = np.polyfit(x_at_i, y_at_i, 1)
+    x_range = np.linspace(min(x_at_i), max(x_at_i), 50)
+    plt.plot(x_range, a1 * x_range + b1, color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Completion Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphEmissionsWRTLoad(data_, image_number_):
+    title = "Emissions vs. Load"
+    x_at_i = [0 for x in range(len(data_))]
+    y_at_i = [0 for y in range(len(data_))]
+    for i in range(len(data_)):
+        x_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y_at_i[i] = data_[i].simulation_averages[AVERAGES.CO2_EMISSIONS][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x_at_i[i], y_at_i[i], marker='o', color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("CO2 Emissions [kg]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x_at_i, y_at_i, 1)
+    x_range = np.linspace(min(x_at_i), max(x_at_i), 50)
+    plt.plot(x_range, a1 * x_range + b1, color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("CO2 Emissions [kg]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphEmissionsWRTLoadPerVehicleType(data_, image_number_):
+    title = "Emissions vs. Load"
+    x_at_i = [0 for x in range(len(data_))]
+    y1_at_i = [0 for y in range(len(data_))]
+    y2_at_i = [0 for y in range(len(data_))]
+    for i in range(len(data_)):
+        x_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y1_at_i[i] = data_[i].simulation_averages[AVERAGES.CO2_EMISSIONS][AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES]
+        plt.plot(x_at_i[i], y1_at_i[i], marker='o', color="red", label="Human-Driving")
+        if(data_[i].simulation_results[RESULTS.PERCENT_SDV] != 0):
+            y2_at_i[i] = data_[i].simulation_averages[AVERAGES.CO2_EMISSIONS][AVERAGE_TYPES.SELF_DRIVING_AVERAGES]
+            plt.plot(x_at_i[i], y2_at_i[i], marker='o', color="blue", label="Self-Driving")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("CO2 Emissions [kg]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+"Per Vehicle Type"+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x_at_i, y1_at_i, 1)
+    a2, b2 = np.polyfit(x_at_i, y2_at_i, 1)
+    x_range = np.linspace(min(x_at_i), max(x_at_i), 50)
+    plt.plot(x_range, a1 * x_range + b1, color="red", label="Human-Driving")
+    plt.plot(x_range, a2 * x_range + b2, color="blue", label="Self-Driving")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("CO2 Emissions [kg]")
+    plt.legend()
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+"Per Vehicle Type"+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    
 
 def scripting():
     start_time = time.time()
     number_of_collisions = 0
     number_of_fails = 0
-    number_of_runs = 40
+    number_of_runs = 10
     run_number = 0
     total_runs = 0
     spawn_density_range = 101 #starts at 1 ends at value
     self_driving_vehicle_probability_range = 100 #starts at 0 ends at value-1
     spawn_density_increment = 20
-    self_driving_vehicle_probability_increment = 20
+    self_driving_vehicle_probability_increment = 25
 
     if(not os.path.exists(images_output_path)):
         os.mkdir(images_output_path)
@@ -365,6 +484,8 @@ def scripting():
     graphCollisionPercentPerLoad(data_list, 1)
     graphTravelTimeWRTSDVPercent(data_list, 1)
     graphCompletionTimeWRTLoad(data_list, 1)
+    graphEmissionsWRTLoad(data_list, 1)
+    graphEmissionsWRTLoadPerVehicleType(data_list, 1)
 
 def basicScripting():
     start_time = time.time()
