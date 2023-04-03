@@ -1925,7 +1925,12 @@ void Simulation::sdv_accelerate(Vehicle* vehicle_)
 
     float close_proximity_deceleration_required = sdv_closeProximityDeceleration(vehicle_);
     float light_based_deceleration_required = sdv_lightBasedDeceleration(vehicle_);
-    float control_system_acceleration = sdv_controlSystemAcceleration(vehicle_);
+    float control_system_acceleration = 0;
+
+    if(my_intersection.trafficLight()->type())
+    {
+        control_system_acceleration = sdv_controlSystemAcceleration(vehicle_);
+    }
 
     if(simulation_params.print_debug_info && control_system_acceleration != 0)
     {
@@ -1968,30 +1973,33 @@ void Simulation::sdv_accelerate(Vehicle* vehicle_)
         debug_log << close_proximity_deceleration_required << "/" << light_based_deceleration_required << "/" << control_system_acceleration << std::endl;
     }
 
-    if(control_system_acceleration < 0) //telling us to decelerate
+    if (my_intersection.trafficLight()->type())
     {
-        if(close_proximity_deceleration_required < (-1 * control_system_acceleration))
+        if(control_system_acceleration < 0) //telling us to decelerate
         {
-            if(simulation_params.print_debug_info)
+            if(close_proximity_deceleration_required < (-1 * control_system_acceleration))
             {
-                debug_log << elapsed_time << " Vehicle " << vehicle_->number();
-                debug_log << " Decelerating due to control system: " << control_system_acceleration << std::endl;
+                if(simulation_params.print_debug_info)
+                {
+                    debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                    debug_log << " Decelerating due to control system: " << control_system_acceleration << std::endl;
+                }
+                sdv_startDeceleration(vehicle_, (-1 * control_system_acceleration));
+                return;
             }
-            sdv_startDeceleration(vehicle_, (-1 * control_system_acceleration));
-            return;
         }
-    }
-    else if(control_system_acceleration > 0)
-    {
-        if(close_proximity_deceleration_required == 0) //should always be true because it should be checked in possibleToRunLight()
+        else if(control_system_acceleration > 0)
         {
-            if(simulation_params.print_debug_info)
+            if(close_proximity_deceleration_required == 0) //should always be true because it should be checked in possibleToRunLight()
             {
-                debug_log << elapsed_time << " Vehicle " << vehicle_->number();
-                debug_log << " Accelerating due to control system: " << control_system_acceleration << std::endl;
+                if(simulation_params.print_debug_info)
+                {
+                    debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                    debug_log << " Accelerating due to control system: " << control_system_acceleration << std::endl;
+                }
+                sdv_startAcceleration(vehicle_, control_system_acceleration);
+                return;
             }
-            sdv_startAcceleration(vehicle_, control_system_acceleration);
-            return;
         }
     }
 
