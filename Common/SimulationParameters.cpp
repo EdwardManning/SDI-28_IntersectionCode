@@ -27,7 +27,7 @@ SimulationParameters::SimulationParameters()
     if(input.is_open())
     {
         uint32 counter = 0;
-        while(input && counter < 2)
+        while(input && counter < 3)
         {
             switch(counter)
             {
@@ -43,6 +43,13 @@ SimulationParameters::SimulationParameters()
                     std::string placeholder;
                     std::getline(input, placeholder);
                     self_driving_vehicle_probability = char(std::stoi(placeholder));
+                }
+                    break;
+                case(2):
+                {
+                    std::string placeholder;
+                    std::getline(input, placeholder);
+                    control_system = bool(std::stoi(placeholder));
                 }
                     break;
                 default:

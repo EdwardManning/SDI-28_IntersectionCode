@@ -358,10 +358,252 @@ def graphEmissionsWRTLoadPerVehicleType(data_, image_number_):
     plt.legend()
     plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+"Per Vehicle Type"+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
     plt.close()
-    
+
+def graphStopTimeWRTLoad(data_, image_number_):
+    title = "Time Stopped vs. Load"
+    x_at_i = [0 for x in range(len(data_))]
+    y_at_i = [0 for y in range(len(data_))]
+    for i in range(len(data_)):
+        x_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_STOPPED][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x_at_i[i], y_at_i[i], marker='o', color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time Stopped [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x_at_i, y_at_i, 1)
+    x_range = np.linspace(min(x_at_i), max(x_at_i), 50)
+    plt.plot(x_range, a1 * x_range + b1, color="blue")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time Stopped [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphStopTimeWRTLoadPerVehicleType(data_, image_number_):
+    title = "Time Stopped vs. Load"
+    x_at_i = [0 for x in range(len(data_))]
+    y1_at_i = [0 for y in range(len(data_))]
+    y2_at_i = [0 for y in range(len(data_))]
+    for i in range(len(data_)):
+        x_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y1_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_STOPPED][AVERAGE_TYPES.HUMAN_DRIVING_AVERAGES]
+        plt.plot(x_at_i[i], y1_at_i[i], marker='o', color="red", label="Human-Driving")
+        if(data_[i].simulation_results[RESULTS.PERCENT_SDV] != 0):
+            y2_at_i[i] = data_[i].simulation_averages[AVERAGES.TIME_STOPPED][AVERAGE_TYPES.SELF_DRIVING_AVERAGES]
+            plt.plot(x_at_i[i], y2_at_i[i], marker='o', color="blue", label="Self-Driving")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time Stopped [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+"Per Vehicle Type"+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x_at_i, y1_at_i, 1)
+    a2, b2 = np.polyfit(x_at_i, y2_at_i, 1)
+    x_range = np.linspace(min(x_at_i), max(x_at_i), 50)
+    plt.plot(x_range, a1 * x_range + b1, color="red", label="Human-Driving")
+    plt.plot(x_range, a2 * x_range + b2, color="blue", label="Self-Driving")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time Stopped [s]")
+    plt.legend()
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+"Per Vehicle Type"+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphComparativeTravelTimeWRTLoad(first_dataset_, second_dataset_, image_number_):
+    title = "Comparative Time Through Intersection vs. Load"
+    x1_at_i = [0 for x in range(len(first_dataset_))]
+    y1_at_i = [0 for y in range(len(first_dataset_))]
+    x2_at_i = [0 for x in range(len(second_dataset_))]
+    y2_at_i = [0 for y in range(len(second_dataset_))]
+    for i in range(len(first_dataset_)):
+        x1_at_i[i] = first_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y1_at_i[i] = first_dataset_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x1_at_i[i], y1_at_i[i], marker='o', color="blue")
+    for i in range(len(second_dataset_)):
+        x2_at_i[i] = second_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y2_at_i[i] = second_dataset_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x2_at_i[i], y2_at_i[i], marker='o', color="red")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x1_at_i, y1_at_i, 1)
+    a2, b2 = np.polyfit(x2_at_i, y2_at_i, 1)
+    x1_range = np.linspace(min(x1_at_i), max(x1_at_i), 50)
+    x2_range = np.linspace(min(x2_at_i), max(x2_at_i), 50)
+    plt.plot(x1_range, a1 * x1_range + b1, color="blue", label="Control System")
+    plt.plot(x2_range, a2 * x2_range + b2, color="red", label="No Control System")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time [s]")
+    plt.legend()
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphComparativeCollisionPercentPerLoad(first_dataset_, second_dataset_, image_number_):
+    title = "Comparative Collision Percent vs. Load"
+    x1_at_i = [0 for x in range(len(first_dataset_))]
+    y1_at_i = [0 for x in range(len(first_dataset_))]
+    x2_at_i = [0 for x in range(len(second_dataset_))]
+    y2_at_i = [0 for y in range(len(second_dataset_))]
+    for i in range(len(first_dataset_)):
+        y1_at_i[i] = first_dataset_[i].number_of_collisions / (first_dataset_[i].number_of_simulations - first_dataset_[i].number_of_fails)
+        x1_at_i[i] = first_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x1_at_i[i], y1_at_i[i], marker='o', color="blue")
+    for i in range(len(second_dataset_)):
+        y2_at_i[i] = second_dataset_[i].number_of_collisions / (second_dataset_[i].number_of_simulations - second_dataset_[i].number_of_fails)
+        x2_at_i[i] = second_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x2_at_i[i], y2_at_i[i], marker='o', color="red")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Percent Collisions")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x1_at_i, y1_at_i, 1)
+    a2, b2 = np.polyfit(x2_at_i, y2_at_i, 1)
+    x1_range = np.linspace(min(x1_at_i), max(x1_at_i), 50)
+    x2_range = np.linspace(min(x2_at_i), max(x2_at_i), 50)
+    plt.plot(x1_range, a1 * x1_range + b1, color="blue", label="Control System")
+    plt.plot(x2_range, a2 * x2_range + b2, color="red", label="No Control System")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Percent Collisions")
+    plt.legend()
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphComparativeTravelTimeWRTSDVPercent(first_dataset_, second_dataset_, image_number_):
+    title = "Comparative Travel Time vs. Percent SDVs"
+    x1_at_i = [0 for x in range(len(first_dataset_))]
+    y1_at_i = [0 for y in range(len(first_dataset_))]
+    x2_at_i = [0 for x in range(len(second_dataset_))]
+    y2_at_i = [0 for y in range(len(second_dataset_))]
+    for i in range(len(first_dataset_)):
+        x1_at_i[i] = first_dataset_[i].simulation_results[RESULTS.PERCENT_SDV]
+        y1_at_i[i] = first_dataset_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x1_at_i[i], y1_at_i[i], marker='o', color="blue")
+    for i in range(len(second_dataset_)):
+        x2_at_i[i] = second_dataset_[i].simulation_results[RESULTS.PERCENT_SDV]
+        y2_at_i[i] = second_dataset_[i].simulation_averages[AVERAGES.TIME_THROUGH_INTERSECTION][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x2_at_i[i], y2_at_i[i], marker='o', color="red")
+    plt.title(title, loc='right')
+    plt.xlabel("Percent Self-Driving Vehicles")
+    plt.ylabel("Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x1_at_i, y1_at_i, 1)
+    a2, b2 = np.polyfit(x2_at_i, y2_at_i, 1)
+    x1_range = np.linspace(min(x1_at_i), max(x1_at_i), 50)
+    x2_range = np.linspace(min(x2_at_i), max(x2_at_i), 50)
+    plt.plot(x1_range, a1 * x1_range + b1, color="blue", label="Control System")
+    plt.plot(x2_range, a2 * x2_range + b2, color="red", label="No Control System")
+    plt.title(title, loc='right')
+    plt.xlabel("Percent Self-Driving Vehicles")
+    plt.ylabel("Completion Time [s]")
+    plt.legend()
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphComparativeCompletionTimeWRTLoad(first_dataset_, second_dataset_, image_number_):
+    title = "Comparative Completion Time vs. Load"
+    x1_at_i = [0 for x in range(len(first_dataset_))]
+    y1_at_i = [0 for y in range(len(first_dataset_))]
+    x2_at_i = [0 for x in range(len(second_dataset_))]
+    y2_at_i = [0 for y in range(len(second_dataset_))]
+    for i in range(len(first_dataset_)):
+        x1_at_i[i] = first_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y1_at_i[i] = first_dataset_[i].simulation_results[RESULTS.ELAPSED_TIME]
+        plt.plot(x1_at_i[i], y1_at_i[i], marker='o', color='blue')
+    for i in range(len(second_dataset_)):
+        x2_at_i[i] = second_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y2_at_i[i] = second_dataset_[i].simulation_results[RESULTS.ELAPSED_TIME]
+        plt.plot(x2_at_i[i], y2_at_i[i], marker='o', color='red')
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Completion Time [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x1_at_i, y1_at_i, 1)
+    a2, b2 = np.polyfit(x2_at_i, y2_at_i, 1)
+    x1_range = np.linspace(min(x1_at_i), max(x1_at_i), 50)
+    x2_range = np.linspace(min(x2_at_i), max(x2_at_i), 50)
+    plt.plot(x1_range, a1 * x1_range + b1, color="blue", label="Control System")
+    plt.plot(x2_range, a2 * x2_range + b2, color="red", label="No Control System")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Completion Time [s]")
+    plt.legend()
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphComparativeEmissionsWRTLoad(first_dataset_, second_dataset_, image_number_):
+    title = "Comparative Emissions vs. Load"
+    x1_at_i = [0 for x in range(len(first_dataset_))]
+    y1_at_i = [0 for y in range(len(first_dataset_))]
+    x2_at_i = [0 for x in range(len(second_dataset_))]
+    y2_at_i = [0 for y in range(len(second_dataset_))]
+    for i in range(len(first_dataset_)):
+        x1_at_i[i] = first_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y1_at_i[i] = first_dataset_[i].simulation_averages[AVERAGES.CO2_EMISSIONS][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x1_at_i[i], y1_at_i[i], marker='o', color="blue")
+    for i in range(len(second_dataset_)):
+        x2_at_i[i] = second_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y2_at_i[i] = second_dataset_[i].simulation_averages[AVERAGES.CO2_EMISSIONS][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x2_at_i[i], y2_at_i[i], marker='o', color="red")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("CO2 Emissions [kg]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x1_at_i, y1_at_i, 1)
+    a2, b2 = np.polyfit(x2_at_i, y2_at_i, 1)
+    x1_range = np.linspace(min(x1_at_i), max(x1_at_i), 50)
+    x2_range = np.linspace(min(x2_at_i), max(x2_at_i), 50)
+    plt.plot(x1_range, a1 * x1_range + b1, color="blue", label="Control System")
+    plt.plot(x2_range, a2 * x2_range + b2, color="red", label="No Control System")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("CO2 Emissions [kg]")
+    plt.legend()
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+
+def graphComparativeStopTimeWRTLoad(first_dataset_, second_dataset_, image_number_):
+    title = "Comparative Time Stopped vs. Load"
+    x1_at_i = [0 for x in range(len(first_dataset_))]
+    y1_at_i = [0 for y in range(len(first_dataset_))]
+    x2_at_i = [0 for x in range(len(second_dataset_))]
+    y2_at_i = [0 for y in range(len(second_dataset_))]
+    for i in range(len(first_dataset_)):
+        x1_at_i[i] = first_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y1_at_i[i] = first_dataset_[i].simulation_averages[AVERAGES.TIME_STOPPED][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x1_at_i[i], y1_at_i[i], marker='o', color="blue")
+    for i in range(len(second_dataset_)):
+        x2_at_i[i] = second_dataset_[i].simulation_averages[AVERAGES.TIME_BETWEEN_SPAWNS][AVERAGE_TYPES.AVERAGES]
+        y2_at_i[i] = second_dataset_[i].simulation_averages[AVERAGES.TIME_STOPPED][AVERAGE_TYPES.AVERAGES]
+        plt.plot(x2_at_i[i], y2_at_i[i], marker='o', color="red")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time Stopped [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
+    a1, b1 = np.polyfit(x1_at_i, y1_at_i, 1)
+    a2, b2 = np.polyfit(x2_at_i, y2_at_i, 1)
+    x1_range = np.linspace(min(x1_at_i), max(x1_at_i), 50)
+    x2_range = np.linspace(min(x2_at_i), max(x2_at_i), 50)
+    plt.plot(x1_range, a1 * x1_range + b1, color="blue", label="Control System")
+    plt.plot(x2_range, a2 * x2_range + b2, color="red", label="No Control System")
+    plt.title(title, loc='right')
+    plt.xlabel("Load [s]")
+    plt.ylabel("Time Stopped [s]")
+    plt.savefig(os.path.join(os.getcwd(),images_output_path_str+title+LINE_STR+str(image_number_)+".png"),format="png", dpi=500)
+    plt.close()
 
 def scripting():
     start_time = time.time()
+    control_system = 1
     number_of_collisions = 0
     number_of_fails = 0
     number_of_runs = 10
@@ -410,7 +652,8 @@ def scripting():
             print(str((total_runs / quantity_of_runs) * 100) + percent_completion_str)
             with open(simulation_params_input, "w") as params:
                 print(x, file=params)
-                print(y, file=params, end="")
+                print(y, file=params)
+                print(control_system, file=params, end='')
             param_data = data(x, y)
             while(run_number < number_of_runs):
                 subprocess.run("source.exe")
@@ -486,6 +729,8 @@ def scripting():
     graphCompletionTimeWRTLoad(data_list, 1)
     graphEmissionsWRTLoad(data_list, 1)
     graphEmissionsWRTLoadPerVehicleType(data_list, 1)
+    graphStopTimeWRTLoad(data_list, 1)
+    graphStopTimeWRTLoadPerVehicleType(data_list, 1)
 
 def basicScripting():
     start_time = time.time()
@@ -579,6 +824,225 @@ def basicScripting():
     param_data.finalize()
     printTestOuptut(param_data, test_output_path)
     print(time.time()-start_time)
+
+def advancedScripting():
+    start_time = time.time()
+    number_of_collisions = 0
+    number_of_fails = 0
+    number_of_runs = 10
+    run_number = 0
+    total_runs = 0
+    spawn_density_range = 101 #starts at 1 ends at value
+    self_driving_vehicle_probability_range = 100 #starts at 0 ends at value-1
+    spawn_density_increment = 20
+    self_driving_vehicle_probability_increment = 25
+
+    if(not os.path.exists(images_output_path)):
+        os.mkdir(images_output_path)
+    #makes sure the output tree is clean before beginning
+    if(collision_text_path.is_file()):
+        os.remove(collision_text_path)
+    if(all_collisions_text_path.is_file()):
+        os.remove(all_collisions_text_path)
+    if(fail_report_text_path.is_file()):
+        os.remove(fail_report_text_path)
+    if(all_fail_report_text_path.is_file()):
+        os.remove(all_fail_report_text_path)
+    if(results_path.is_file()):
+        os.remove(results_path)
+    if(test_output_path.is_file()):
+        os.remove(test_output_path)
+    if(second_output_path.is_file()):
+        os.remove(second_output_path)
+    if(completed_swerrs.is_file()):
+        os.remove(completed_swerrs)
+
+    data_list = []
+    no_control_data_list = []
+    percent_completion_str = "%% complete"
+
+    
+    quantity_of_runs = 0
+    for x in range(1, spawn_density_range + 1, spawn_density_increment):
+        for y in range(0, self_driving_vehicle_probability_range + 1, self_driving_vehicle_probability_increment):
+            for z in range(number_of_runs):
+                quantity_of_runs += 2
+
+    print(quantity_of_runs)
+    
+    for x in range(1, spawn_density_range + 1, spawn_density_increment):
+        for y in range(0, self_driving_vehicle_probability_range + 1, self_driving_vehicle_probability_increment):
+            control_system = 1
+            print(str(x) + " " + str(y))
+            print(str((total_runs / quantity_of_runs) * 100) + percent_completion_str)
+            with open(simulation_params_input, "w") as params:
+                print(x, file=params)
+                print(y, file=params)
+                print(control_system, file=params, end='')
+            param_data = data(x, y)
+            while(run_number < number_of_runs):
+                subprocess.run("source.exe")
+                
+                total_runs += 1
+                run_number += 1
+
+                if collision_text_path.is_file():
+                    print("Collision Occured")
+                    collision_data = []
+                    swerr_data = []
+                    with open(SWERR_path, "r") as swerrs:
+                        swerr_data = swerrs.readlines()
+                    with open(collision_text_path, "r") as input:
+                        collision_data = input.readlines()
+                    with open(all_collisions_text_path, "a") as output:
+                        for line in collision_data:
+                            print(line, file=output, end='')
+                        print(file=output)
+                        for swerr in swerr_data:
+                            print(swerr, file=output, end='')
+                        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
+                    os.remove(collision_text_path)
+                    number_of_collisions += 1
+                    param_data.add_collision()
+
+                if fail_report_text_path.is_file():
+                    print("Failure Occured")
+                    failure_data = []
+                    fail_swerr_data = []
+                    with open(SWERR_path, "r") as swerrs:
+                        fail_swerr_data = swerrs.readlines()
+                    with open(fail_report_text_path, "r") as input:
+                        failure_data = input.readlines()
+                    with open(all_fail_report_text_path, "a") as output:
+                        for line in failure_data:
+                            print(line, file=output, end='')
+                        print(file=output)
+                        for swerr in fail_swerr_data:
+                            print(swerr, file=output, end='')
+                        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
+                    os.remove(fail_report_text_path)
+                    number_of_fails += 1
+                    param_data.add_failure()
+                
+                if results_path.is_file():
+                    completion_swerr_data = []
+                    with open(SWERR_path, "r") as swerrs:
+                        completion_swerr_data = swerrs.readlines()
+                    with open(completed_swerrs, "a") as output:
+                        for swerr in completion_swerr_data:
+                            print(swerr, file=output, end='')
+                        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
+                    processResults(param_data)
+                    os.remove(results_path)
+            print(param_data.number_of_collisions)
+            print(param_data.number_of_fails)
+            print(run_number)
+            param_data.finalize()
+            data_list.append(param_data)
+            run_number = 0
+            print()
+
+            control_system = 0
+            no_control_param_data = data(x, y)
+            with open(simulation_params_input, "w") as params:
+                print(x, file=params)
+                print(y, file=params)
+                print(control_system, file=params, end='')
+            while(run_number < number_of_runs):
+                subprocess.run("source.exe")
+                
+                total_runs += 1
+                run_number += 1
+
+                if collision_text_path.is_file():
+                    print("Collision Occured")
+                    collision_data = []
+                    swerr_data = []
+                    with open(SWERR_path, "r") as swerrs:
+                        swerr_data = swerrs.readlines()
+                    with open(collision_text_path, "r") as input:
+                        collision_data = input.readlines()
+                    with open(all_collisions_text_path, "a") as output:
+                        for line in collision_data:
+                            print(line, file=output, end='')
+                        print(file=output)
+                        for swerr in swerr_data:
+                            print(swerr, file=output, end='')
+                        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
+                    os.remove(collision_text_path)
+                    number_of_collisions += 1
+                    no_control_param_data.add_collision()
+
+                if fail_report_text_path.is_file():
+                    print("Failure Occured")
+                    failure_data = []
+                    fail_swerr_data = []
+                    with open(SWERR_path, "r") as swerrs:
+                        fail_swerr_data = swerrs.readlines()
+                    with open(fail_report_text_path, "r") as input:
+                        failure_data = input.readlines()
+                    with open(all_fail_report_text_path, "a") as output:
+                        for line in failure_data:
+                            print(line, file=output, end='')
+                        print(file=output)
+                        for swerr in fail_swerr_data:
+                            print(swerr, file=output, end='')
+                        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
+                    os.remove(fail_report_text_path)
+                    number_of_fails += 1
+                    no_control_param_data.add_failure()
+                
+                if results_path.is_file():
+                    completion_swerr_data = []
+                    with open(SWERR_path, "r") as swerrs:
+                        completion_swerr_data = swerrs.readlines()
+                    with open(completed_swerrs, "a") as output:
+                        for swerr in completion_swerr_data:
+                            print(swerr, file=output, end='')
+                        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", file=output)
+                    processResults(no_control_param_data)
+                    os.remove(results_path)
+                    
+            print(no_control_param_data.number_of_collisions)
+            print(no_control_param_data.number_of_fails)
+            print(run_number)
+            no_control_param_data.finalize()
+            no_control_data_list.append(no_control_param_data)
+            run_number = 0
+            print()
+    
+    print(number_of_collisions)
+    print(number_of_fails)
+    print(total_runs)
+    print(time.time()-start_time)
+    graphTravelTimeWRTLoad(data_list, 1)
+    graphTravelTimeWRTLoadPerVehicleType(data_list, 1)
+    graphCollisionPercentPerLoad(data_list, 1)
+    graphTravelTimeWRTSDVPercent(data_list, 1)
+    graphCompletionTimeWRTLoad(data_list, 1)
+    graphEmissionsWRTLoad(data_list, 1)
+    graphEmissionsWRTLoadPerVehicleType(data_list, 1)
+    graphStopTimeWRTLoad(data_list, 1)
+    graphStopTimeWRTLoadPerVehicleType(data_list, 1)
+
+    graphTravelTimeWRTLoad(no_control_data_list, 2)
+    graphTravelTimeWRTLoadPerVehicleType(no_control_data_list, 2)
+    graphCollisionPercentPerLoad(no_control_data_list, 2)
+    graphTravelTimeWRTSDVPercent(no_control_data_list, 2)
+    graphCompletionTimeWRTLoad(no_control_data_list, 2)
+    graphEmissionsWRTLoad(no_control_data_list, 2)
+    graphEmissionsWRTLoadPerVehicleType(no_control_data_list, 2)
+    graphStopTimeWRTLoad(no_control_data_list, 2)
+    graphStopTimeWRTLoadPerVehicleType(no_control_data_list, 2)
+
+    graphComparativeTravelTimeWRTLoad(data_list, no_control_data_list, 1)
+    graphComparativeCollisionPercentPerLoad(data_list, no_control_data_list, 1)
+    graphComparativeTravelTimeWRTSDVPercent(data_list, no_control_data_list, 1)
+    graphComparativeCompletionTimeWRTLoad(data_list, no_control_data_list, 1)
+    graphComparativeEmissionsWRTLoad(data_list, no_control_data_list, 1)
+    graphComparativeStopTimeWRTLoad(data_list, no_control_data_list, 1)
+
     
 #basicScripting()
-scripting()
+#scripting()
+advancedScripting()

@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import shutil
 
-STANDARD_SIMULATION_PARAMS = [1, 25]
+STANDARD_SIMULATION_PARAMS = [1, 25, 1]
 
 collision_text_path = Path('./Output/CollisionInformation.txt')
 all_collisions_text_path = Path('./Output/AllCollisions.txt')
@@ -58,7 +58,8 @@ def cleanRepo():
     if(simulation_params_input.is_file()):
         with open(simulation_params_input, "w") as f:
             print(STANDARD_SIMULATION_PARAMS[0], file=f)
-            print(STANDARD_SIMULATION_PARAMS[1], end='', file=f)
+            print(STANDARD_SIMULATION_PARAMS[1], file=f)
+            print(STANDARD_SIMULATION_PARAMS[2], end='', file=f)
     if(os.path.isdir(images_output_path)):
         remove_path = input("Image File Present, would you like to delete it? (make sure all relevent data is saved first) (y/n) ")
         if(remove_path == 'y'):
