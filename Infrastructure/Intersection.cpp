@@ -23,7 +23,7 @@ Intersection::Intersection()
     my_roads[EAST] = new EastRoad();
     my_roads[WEST] = new WestRoad();
 
-    my_trafficLight = new TrafficLight(false);
+    my_trafficLight = new TrafficLight(simulation_params.control_system);
 }
 
 /*

@@ -85,6 +85,10 @@ void Simulation::run()
     //debugIntersection();
     while(!completionCheck() && (elapsed_time < 2000))
     {   
+        if(my_intersection.trafficLight()->type())
+        {
+            lightControlSystem();
+        }
         for(uint32 i = 0; i < active_vehicles.size(); i++)
         {
             if (active_vehicles[i]->vehicleType() == CAR || 
@@ -1921,7 +1925,13 @@ void Simulation::sdv_accelerate(Vehicle* vehicle_)
 
     float close_proximity_deceleration_required = sdv_closeProximityDeceleration(vehicle_);
     float light_based_deceleration_required = sdv_lightBasedDeceleration(vehicle_);
-    //float control_system_acceleration = sdv_controlSystemAcceleration(vehicle_);
+    float control_system_acceleration = sdv_controlSystemAcceleration(vehicle_);
+
+    if(simulation_params.print_debug_info && control_system_acceleration != 0)
+    {
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+        debug_log << "Control System Acceleration: " << control_system_acceleration << std::endl;
+    }
 
     if(close_proximity_deceleration_required < 0)
     {
@@ -1949,27 +1959,40 @@ void Simulation::sdv_accelerate(Vehicle* vehicle_)
         }
     }
 
-    // if(close_proximity_deceleration_required == 0 &&
-    //    light_based_deceleration_required == 0 && 
-    //    control_system_acceleration != 0)
-    // {
-    //     if(control_system_acceleration < 0)
-    //     {
-    //         control_system_acceleration *= -1;
-    //         sdv_startDeceleration(vehicle_, control_system_acceleration);
-    //     }
-    //     else
-    //     {
-    //         sdv_startAcceleration(vehicle_, control_system_acceleration);
-    //     }
-    // }
-
     if(simulation_params.print_debug_acceleration && 
       ((close_proximity_deceleration_required != 0) ||
-      (light_based_deceleration_required != 0)))
+      (light_based_deceleration_required != 0) ||
+      (control_system_acceleration != 0)))
     {
-        debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " proximityDeceleration/lightAcceleration ";
-        debug_log << close_proximity_deceleration_required << "/" << light_based_deceleration_required << std::endl;
+        debug_log << elapsed_time << " Vehicle " << vehicle_->number() << " proximityDeceleration/lightDeceleration/controlSystemDeceleration ";
+        debug_log << close_proximity_deceleration_required << "/" << light_based_deceleration_required << "/" << control_system_acceleration << std::endl;
+    }
+
+    if(control_system_acceleration < 0) //telling us to decelerate
+    {
+        if(close_proximity_deceleration_required < (-1 * control_system_acceleration))
+        {
+            if(simulation_params.print_debug_info)
+            {
+                debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                debug_log << " Decelerating due to control system: " << control_system_acceleration << std::endl;
+            }
+            sdv_startDeceleration(vehicle_, (-1 * control_system_acceleration));
+            return;
+        }
+    }
+    else if(control_system_acceleration > 0)
+    {
+        if(close_proximity_deceleration_required == 0) //should always be true because it should be checked in possibleToRunLight()
+        {
+            if(simulation_params.print_debug_info)
+            {
+                debug_log << elapsed_time << " Vehicle " << vehicle_->number();
+                debug_log << " Accelerating due to control system: " << control_system_acceleration << std::endl;
+            }
+            sdv_startAcceleration(vehicle_, control_system_acceleration);
+            return;
+        }
     }
 
     if(vehicle_->currentState() & IN_INTERSECTION &&
@@ -2611,7 +2634,36 @@ float Simulation::sdv_lightColourDeceleration(Vehicle *vehicle_)
 
 float Simulation::sdv_controlSystemAcceleration(Vehicle *vehicle_)
 {
-    return 0.0f;
+    if(!simulation_params.control_system)
+    {
+        return 0;
+    }
+
+    if(vehicle_->nextCommand().vehicle_number != vehicle_->number() && 
+       (vehicle_->nextCommand().command_type != NULL_COMMAND))
+    {
+        SWERRINT(vehicle_->nextCommand().vehicle_number);
+        return 0;
+    }
+    
+    switch(vehicle_->nextCommand().command_type)
+    {
+        case(NULL_COMMAND): return 0;
+            break;
+        case(ACCELERATE): return vehicle_->nextCommand().value;
+            break;
+        case(DECELERATE): return -1 * vehicle_->nextCommand().value;
+            break;
+        case(SET_MAX_SPEED):
+        {
+            vehicle_->setMaxSpeed(vehicle_->nextCommand().value);
+            return 0;
+        }
+            break;
+        default: SWERRINT(vehicle_->nextCommand().command_type);
+    }
+    return 0;
+
 }
 
 void Simulation::sdv_startAcceleration(Vehicle* vehicle_)
@@ -2668,6 +2720,803 @@ void Simulation::sdv_startDeceleration(Vehicle* vehicle_, float deceleration_mag
             vehicle_->toggleBrakeLights(ON);
         }
     }
+}
+
+void Simulation::lightControlSystem()
+{
+    if(active_vehicles.size() == 0 || elapsed_time == 0)
+    {
+        return;
+    }
+    else
+    {
+        std::vector<command*> vehicle_commands = createVehicleCommands();
+        if (vehicle_commands.size() > 0)
+        {
+            bool valid_commands = checkVehicleCommands(vehicle_commands);
+            if(valid_commands)
+            {
+                if(!sendVehicleCommands(vehicle_commands))
+                {
+                    SWERRFLOAT(elapsed_time);
+                }
+            }
+        }
+    }
+}
+
+std::vector<command*> Simulation::createVehicleCommands()
+{
+    std::vector<command*> command_list;
+    if(elapsed_time == 0)
+    {
+        return command_list;
+    }
+    uint32 number_of_directional_cars[TOTAL_DIRECTIONS] = { 0, 0, 0, 0 };
+    for(uint8 i = 0; i < TOTAL_DIRECTIONS; i++)
+    {
+        for(uint8 j = 0; j < my_intersection.getRoad(i)->totalLanes(); j++)
+        {
+            if(my_intersection.getRoad(i)->getLane(j)->laneType() == ENTRY_LANE)
+            {
+                number_of_directional_cars[i] += my_intersection.getRoad(i)->getLane(j)->numberOfVehicles();
+            }
+        }
+    }
+
+    if(number_of_directional_cars[NORTH] + number_of_directional_cars[SOUTH] + 
+       number_of_directional_cars[EAST] + number_of_directional_cars[WEST] == 0)
+    {
+        if(simulation_params.print_debug_info)
+        {
+            debug_log << elapsed_time;
+            debug_log << " Number of Pre-Intersection Vehicles: ";
+            debug_log << number_of_directional_cars[NORTH] + number_of_directional_cars[SOUTH] + number_of_directional_cars[EAST] + number_of_directional_cars[WEST] << std::endl;
+        }
+        return command_list;
+    }
+
+    bool force_traffic_light_change = trafficLightCommands(number_of_directional_cars);
+    if(!light_change_occured)
+    {
+        light_change_occured = force_traffic_light_change;
+    }
+
+    bool ns_going = (my_intersection.trafficLight()->currentLightColour(NORTH) == my_intersection.trafficLight()->currentLightColour(SOUTH) &&
+                     my_intersection.trafficLight()->currentLightColour(NORTH) != RED);
+    
+    bool ew_going = (my_intersection.trafficLight()->currentLightColour(EAST) == my_intersection.trafficLight()->currentLightColour(WEST) &&
+                     my_intersection.trafficLight()->currentLightColour(EAST) != RED);
+
+    if(trafficWeavingPossible())
+    {
+        if(ns_going && ew_going)
+        {
+            SWERRINT(my_intersection.trafficLight()->currentEvent());
+        }
+        else if(ns_going)
+        {
+            if(number_of_directional_cars[NORTH] + number_of_directional_cars[SOUTH] < 2 &&
+               number_of_directional_cars[NORTH] + number_of_directional_cars[SOUTH] > 0)
+            {
+                std::vector<uint32> vehicle_numbers;
+                std::vector<float> distances_to_center;
+                std::vector<float> time_to_center;
+                bool greater_time = 0;
+                for(uint32 i = 0; i < my_intersection.getRoad(NORTH)->numberOfVehicles(); i++)
+                {
+                    if(!(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->currentState() & THROUGH_INTERSECTION))
+                    {
+                        vehicle_numbers.push_back(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->number());
+                    }
+                }
+                for(uint32 i = 0; i < my_intersection.getRoad(SOUTH)->numberOfVehicles(); i++)
+                {
+                    if(!(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->currentState() & THROUGH_INTERSECTION))
+                    {
+                        vehicle_numbers.push_back(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->number());
+                    }
+                }
+                if(vehicle_numbers.size() > 2)
+                {
+                    SWERRINT(vehicle_numbers.size());
+                    if(simulation_params.print_debug_info)
+                    {
+                        debug_log << elapsed_time;
+                        debug_log << " Goto pre_light_timing triggered " << __LINE__ << std::endl;
+                    }
+                    goto pre_light_timing;
+                }
+                for(uint8 i = 0; i < vehicle_numbers.size(); i++)
+                {
+                    distances_to_center.push_back(distanceFromCenter(vehicle_list[vehicle_numbers[i]]));
+                    time_to_center.push_back(distances_to_center[i] / MAGNITUDE(vehicle_list[vehicle_numbers[i]]->currentVelocity()[x], vehicle_list[vehicle_numbers[i]]->currentVelocity()[y]));
+                }
+                if(time_to_center.size() > 1)
+                {
+                    greater_time = time_to_center[0] < time_to_center[1];
+                }
+                uint32 increment = command_list.size();
+                command_list.push_back(new command);
+                command_list[increment]->command_type = ACCELERATE;
+                command_list[increment]->value = timedAcceleration(distances_to_center[greater_time], MAGNITUDE(vehicle_list[vehicle_numbers[greater_time]]->currentVelocity()[x], vehicle_list[vehicle_numbers[greater_time]]->currentVelocity()[y]), time_to_center[!greater_time]);
+                command_list[increment]->vehicle_number = vehicle_numbers[greater_time];
+
+                for(uint32 i = 0; i < my_intersection.getRoad(EAST)->numberOfVehicles(); i++)
+                {
+                    if(vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->currentState() & THROUGH_INTERSECTION)
+                    {
+                        continue;
+                    }
+                    if (vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->vehicleType() == SELF_DRIVING_CAR)
+                    {
+                        if(possibleToRunLight(vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]))
+                        {
+                            vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->forceRunLight();
+                            float required_distance = distanceFromCenter(vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]);
+                            float current_velocity = MAGNITUDE(vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->currentVelocity()[x], vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->currentVelocity()[y]);
+                            float required_time = time_to_center[!greater_time];
+                            uint32 increment = command_list.size();
+                            command_list.push_back(new command);
+                            command_list[increment]->command_type = ACCELERATE;
+                            command_list[increment]->value = timedAcceleration(required_distance, current_velocity, required_time);
+                            command_list[increment]->vehicle_number = vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->number();
+                        }
+                    }
+                }
+                for(uint32 i = 0; i < my_intersection.getRoad(WEST)->numberOfVehicles(); i++)
+                {
+                    if(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->currentState() & THROUGH_INTERSECTION)
+                    {
+                        continue;
+                    }
+                    if (vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->vehicleType() == SELF_DRIVING_CAR)
+                    {
+                        if(possibleToRunLight(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]))
+                        {
+                            vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->forceRunLight();
+                            float required_distance = distanceFromCenter(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]);
+                            float current_velocity = MAGNITUDE(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->currentVelocity()[x], vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->currentVelocity()[y]);
+                            float required_time = time_to_center[!greater_time];
+                            uint32 increment = command_list.size();
+                            command_list.push_back(new command);
+                            command_list[increment]->command_type = ACCELERATE;
+                            command_list[increment]->value = timedAcceleration(required_distance, current_velocity, required_time);
+                            command_list[increment]->vehicle_number = vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->number();
+                        }
+                    }
+                }
+            }
+        }
+        else if(ew_going)
+        {
+            if(number_of_directional_cars[EAST] + number_of_directional_cars[WEST] < 2 &&
+               number_of_directional_cars[EAST] + number_of_directional_cars[WEST] > 0)
+            {
+                std::vector<uint32> vehicle_numbers;
+                std::vector<float> distances_to_center;
+                std::vector<float> time_to_center;
+                bool greater_time = 0;
+                for(uint32 i = 0; i < my_intersection.getRoad(EAST)->numberOfVehicles(); i++)
+                {
+                    if(!(vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->currentState() & THROUGH_INTERSECTION))
+                    {
+                        vehicle_numbers.push_back(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->number());
+                    }
+                }
+                for(uint32 i = 0; i < my_intersection.getRoad(WEST)->numberOfVehicles(); i++)
+                {
+                    if(!(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->currentState() & THROUGH_INTERSECTION))
+                    {
+                        vehicle_numbers.push_back(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->number());
+                    }
+                }
+                if(vehicle_numbers.size() > 2)
+                {
+                    SWERRINT(vehicle_numbers.size());
+                    if(simulation_params.print_debug_info)
+                    {
+                        debug_log << elapsed_time;
+                        debug_log << " Goto pre_light_timing triggered " << __LINE__ << std::endl;
+                    }
+                    goto pre_light_timing;
+                }
+                for(uint8 i = 0; i < vehicle_numbers.size(); i++)
+                {
+                    distances_to_center.push_back(distanceFromCenter(vehicle_list[vehicle_numbers[i]]));
+                    time_to_center.push_back(distances_to_center[i] / MAGNITUDE(vehicle_list[vehicle_numbers[i]]->currentVelocity()[x], vehicle_list[vehicle_numbers[i]]->currentVelocity()[y]));
+                }
+                if(time_to_center.size() > 1)
+                {
+                    greater_time = time_to_center[0] < time_to_center[1];
+                }
+                uint32 increment = command_list.size();
+                command_list.push_back(new command);
+                command_list[increment]->command_type = ACCELERATE;
+                command_list[increment]->value = timedAcceleration(distances_to_center[greater_time], MAGNITUDE(vehicle_list[vehicle_numbers[greater_time]]->currentVelocity()[x], vehicle_list[vehicle_numbers[greater_time]]->currentVelocity()[y]), time_to_center[!greater_time]);
+                command_list[increment]->vehicle_number = vehicle_numbers[greater_time];
+
+                for(uint32 i = 0; i < my_intersection.getRoad(NORTH)->numberOfVehicles(); i++)
+                {
+                    if(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->currentState() & THROUGH_INTERSECTION)
+                    {
+                        continue;
+                    }
+                    if (vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->vehicleType() == SELF_DRIVING_CAR)
+                    {
+                        if(possibleToRunLight(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]))
+                        {
+                            vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->forceRunLight();
+                            float required_distance = distanceFromCenter(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]);
+                            float current_velocity = MAGNITUDE(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->currentVelocity()[x], vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->currentVelocity()[y]);
+                            float required_time = time_to_center[!greater_time];
+                            uint32 increment = command_list.size();
+                            command_list.push_back(new command);
+                            command_list[increment]->command_type = ACCELERATE;
+                            command_list[increment]->value = timedAcceleration(required_distance, current_velocity, required_time);
+                            command_list[increment]->vehicle_number = vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->number();
+                        }
+                    }
+                }
+                for(uint32 i = 0; i < my_intersection.getRoad(SOUTH)->numberOfVehicles(); i++)
+                {
+                    if(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->currentState() & THROUGH_INTERSECTION)
+                    {
+                        continue;
+                    }
+                    if (vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->vehicleType() == SELF_DRIVING_CAR)
+                    {
+                        if(possibleToRunLight(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]))
+                        {
+                            vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->forceRunLight();
+                            float required_distance = distanceFromCenter(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]);
+                            float current_velocity = MAGNITUDE(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->currentVelocity()[x], vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->currentVelocity()[y]);
+                            float required_time = time_to_center[!greater_time];
+                            uint32 increment = command_list.size();
+                            command_list.push_back(new command);
+                            command_list[increment]->command_type = ACCELERATE;
+                            command_list[increment]->value = timedAcceleration(required_distance, current_velocity, required_time);
+                            command_list[increment]->vehicle_number = vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->number();
+                        }
+                    }
+                }
+            }
+        }
+        if(command_list.size() == 1)
+        {
+            command_list.pop_back();
+        }
+    }
+    else
+    {
+        goto pre_light_timing;
+    }
+    if(simulation_params.print_debug_info)
+    {
+        debug_log << elapsed_time;
+        debug_log << " Number of Commands Traffic Weaving: " << command_list.size() << std::endl;
+    }
+    return command_list;
+pre_light_timing:
+
+    if(ns_going)
+    {
+        float time_until_green;
+        switch(my_intersection.trafficLight()->currentLightColour(NORTH))
+        {
+            case(GREEN):
+            {
+                time_until_green = (my_intersection.trafficLight()->currentEventDuration() - my_intersection.trafficLight()->timer());
+                time_until_green += intersection_params.ns_yellow_time;
+                time_until_green += intersection_params.ew_red_overlap_time;
+            }
+                break;
+            case(YELLOW):
+            {
+                time_until_green = (my_intersection.trafficLight()->currentEventDuration() - my_intersection.trafficLight()->timer());
+                time_until_green += intersection_params.ew_red_overlap_time;
+            }
+                break;
+            case(RED): SWERRINT(my_intersection.trafficLight()->currentEvent());
+                break;
+            default: SWERRINT(my_intersection.trafficLight()->currentLightColour(NORTH));
+        }
+        for(uint32 i = 0; i < my_intersection.getRoad(EAST)->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->vehicleType() == SELF_DRIVING_CAR)
+            {
+                Vehicle* test_vehicle = vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)];
+                float distance_required = test_vehicle->exteriorPosition(FRONT_BUMPER)[x] - test_vehicle->stopLine();
+                float current_velocity = MAGNITUDE(test_vehicle->currentVelocity()[x], test_vehicle->currentVelocity()[y]);
+                float required_acceleration = timedAcceleration(distance_required, current_velocity, time_until_green);
+                if(test_vehicle->verifyDeceleration(required_acceleration))
+                {
+                    uint32 increment = command_list.size();
+                    command_list.push_back(new command);
+                    command_list[increment]->command_type = DECELERATE;
+                    command_list[increment]->value = required_acceleration;
+                    command_list[increment]->vehicle_number = test_vehicle->number();
+                }
+            }
+        }
+        for(uint32 i = 0; i < my_intersection.getRoad(WEST)->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->vehicleType() == SELF_DRIVING_CAR)
+            {
+                Vehicle* test_vehicle = vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)];
+                float distance_required =  test_vehicle->stopLine() - test_vehicle->exteriorPosition(FRONT_BUMPER)[x];
+                float current_velocity = MAGNITUDE(test_vehicle->currentVelocity()[x], test_vehicle->currentVelocity()[y]);
+                float required_acceleration = timedAcceleration(distance_required, current_velocity, time_until_green);
+                if(test_vehicle->verifyDeceleration(required_acceleration))
+                {
+                    uint32 increment = command_list.size();
+                    command_list.push_back(new command);
+                    command_list[increment]->command_type = DECELERATE;
+                    command_list[increment]->value = required_acceleration;
+                    command_list[increment]->vehicle_number = test_vehicle->number();
+                }
+            }
+        }
+    }
+    else if(ew_going)
+    {
+        float time_until_green;
+        switch(my_intersection.trafficLight()->currentLightColour(EAST))
+        {
+            case(GREEN):
+            {
+                time_until_green = (my_intersection.trafficLight()->currentEventDuration() - my_intersection.trafficLight()->timer());
+                time_until_green += intersection_params.ew_yellow_time;
+                time_until_green += intersection_params.ns_red_overlap_time;
+            }
+                break;
+            case(YELLOW):
+            {
+                time_until_green = (my_intersection.trafficLight()->currentEventDuration() - my_intersection.trafficLight()->timer());
+                time_until_green += intersection_params.ns_red_overlap_time;
+            }
+                break;
+            case(RED): SWERRINT(my_intersection.trafficLight()->currentEvent());
+                break;
+            default: SWERRINT(my_intersection.trafficLight()->currentLightColour(EAST));
+        }
+        for(uint32 i = 0; i < my_intersection.getRoad(SOUTH)->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->vehicleType() == SELF_DRIVING_CAR)
+            {
+                Vehicle* test_vehicle = vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)];
+                float distance_required = test_vehicle->exteriorPosition(FRONT_BUMPER)[y] - test_vehicle->stopLine();
+                float current_velocity = MAGNITUDE(test_vehicle->currentVelocity()[x], test_vehicle->currentVelocity()[y]);
+                float required_acceleration = timedAcceleration(distance_required, current_velocity, time_until_green);
+                if(test_vehicle->verifyDeceleration(required_acceleration))
+                {
+                    uint32 increment = command_list.size();
+                    command_list.push_back(new command);
+                    command_list[increment]->command_type = DECELERATE;
+                    command_list[increment]->value = required_acceleration;
+                    command_list[increment]->vehicle_number = test_vehicle->number();
+                }
+            }
+        }
+        for(uint32 i = 0; i < my_intersection.getRoad(NORTH)->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->vehicleType() == SELF_DRIVING_CAR)
+            {
+                Vehicle* test_vehicle = vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)];
+                float distance_required =  test_vehicle->stopLine() - test_vehicle->exteriorPosition(FRONT_BUMPER)[y];
+                float current_velocity = MAGNITUDE(test_vehicle->currentVelocity()[x], test_vehicle->currentVelocity()[y]);
+                float required_acceleration = timedAcceleration(distance_required, current_velocity, time_until_green);
+                if(test_vehicle->verifyDeceleration(required_acceleration))
+                {
+                    uint32 increment = command_list.size();
+                    command_list.push_back(new command);
+                    command_list[increment]->command_type = DECELERATE;
+                    command_list[increment]->value = required_acceleration;
+                    command_list[increment]->vehicle_number = test_vehicle->number();
+                }
+            }
+        }
+    }
+    if(simulation_params.print_debug_info)
+    {
+        debug_log << elapsed_time;
+        debug_log << " Number of Commands Pre Intersection: " << command_list.size() << std::endl;
+    }
+    return command_list;
+}
+
+bool Simulation::trafficLightCommands(uint32 *directional_cars_)
+{
+    if(directional_cars_ == nullptr)
+    {
+        SWERRINT(active_vehicles.size());
+        return false;
+    }
+
+    uint32 ns_cars = directional_cars_[NORTH] + directional_cars_[SOUTH];
+    uint32 ew_cars = directional_cars_[EAST] + directional_cars_[WEST];
+    
+    if(ns_cars == 0 && ew_cars > 0)
+    {
+        my_intersection.trafficLight()->changeEvent(EW_GREEN);
+        return true;
+    }
+    else if(ew_cars == 0 && ns_cars > 0)
+    {
+        my_intersection.trafficLight()->changeEvent(NS_GREEN);
+        return true;
+    }
+    
+
+    if((ns_cars >= 5 * ew_cars) && (my_intersection.trafficLight()->timeSinceLastChange() < (2.5 * intersection_params.ns_green_time)))
+    {
+        if(my_intersection.trafficLight()->currentLightColour(NORTH) == my_intersection.trafficLight()->currentLightColour(SOUTH) &&
+           my_intersection.trafficLight()->currentLightColour(NORTH) != GREEN)
+        {
+            if(my_intersection.trafficLight()->currentLightColour(NORTH) == my_intersection.trafficLight()->currentLightColour(SOUTH))
+            {
+                switch(my_intersection.trafficLight()->currentLightColour(EAST))
+                {
+                    case(GREEN):
+                    {
+                        my_intersection.trafficLight()->changeEvent(EW_YELLOW);
+                        return true;
+                    }
+                        break;
+                    case(YELLOW):
+                    {
+                        return false;
+                    }
+                        break;
+                    case(RED):
+                    {
+                        if((my_intersection.trafficLight()->timer() >= 1) && (my_intersection.trafficLight()->currentEvent() == NS_MUTUAL_RED))
+                        {
+                            my_intersection.trafficLight()->changeEvent(NS_GREEN);
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                        break;
+                    default: SWERRINT(my_intersection.trafficLight()->currentLightColour(EAST));
+                }
+            }
+            else if (my_intersection.trafficLight()->currentLightColour(EAST) == RED)
+            {
+                switch(my_intersection.trafficLight()->currentLightColour(WEST))
+                {
+                    case(GREEN):
+                    {
+                        my_intersection.trafficLight()->changeEvent(WEST_ADVANCED_YELLOW);
+                        return true;
+                    }
+                        break;
+                    case(YELLOW):
+                    {
+                        if(my_intersection.trafficLight()->timer() + simulation_params.time_step == intersection_params.ew_advanced_yellow_time)
+                        {
+                            my_intersection.trafficLight()->changeEvent(NS_MUTUAL_RED);
+                            return true;
+                        }
+                        return false;
+                    }
+                        break;
+                    case(RED):
+                    {
+                        SWERRINT(my_intersection.trafficLight()->currentEvent());
+                        return false;
+                    }
+                        break;
+                    default: SWERRINT(my_intersection.trafficLight()->currentLightColour(NORTH));
+                }
+            }
+            else if (my_intersection.trafficLight()->currentLightColour(WEST) == RED)
+            {
+                switch(my_intersection.trafficLight()->currentLightColour(EAST))
+                {
+                    case(GREEN):
+                    {
+                        my_intersection.trafficLight()->changeEvent(EAST_ADVANCED_YELLOW);
+                        return true;
+                    }
+                        break;
+                    case(YELLOW):
+                    {
+                        if(my_intersection.trafficLight()->timer() + simulation_params.time_step == intersection_params.ew_advanced_yellow_time)
+                        {
+                            my_intersection.trafficLight()->changeEvent(NS_MUTUAL_RED);
+                            return true;
+                        }
+                        return false;
+                    }
+                        break;
+                    case(RED):
+                    {
+                        SWERRINT(my_intersection.trafficLight()->currentEvent());
+                        return false;
+                    }
+                        break;
+                    default: SWERRINT(my_intersection.trafficLight()->currentLightColour(NORTH));
+                }
+            }
+        }
+    }
+    else if(ew_cars >= 5 * ns_cars && (my_intersection.trafficLight()->timeSinceLastChange() < (2.5 * intersection_params.ew_green_time)))
+    {
+        if(my_intersection.trafficLight()->currentLightColour(EAST) == my_intersection.trafficLight()->currentLightColour(WEST) &&
+           my_intersection.trafficLight()->currentLightColour(EAST) != GREEN)
+        {
+            if(my_intersection.trafficLight()->currentLightColour(NORTH) == my_intersection.trafficLight()->currentLightColour(SOUTH))
+            {
+                switch(my_intersection.trafficLight()->currentLightColour(NORTH))
+                {
+                    case(GREEN):
+                    {
+                        my_intersection.trafficLight()->changeEvent(NS_YELLOW);
+                        return true;
+                    }
+                        break;
+                    case(YELLOW):
+                    {
+                        return false;
+                    }
+                        break;
+                    case(RED):
+                    {
+                        if((my_intersection.trafficLight()->timer() >= 1) && (my_intersection.trafficLight()->currentEvent() == EW_MUTUAL_RED))
+                        {
+                            my_intersection.trafficLight()->changeEvent(EW_GREEN);
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                        break;
+                    default: SWERRINT(my_intersection.trafficLight()->currentLightColour(NORTH));
+                }
+            }
+            else if (my_intersection.trafficLight()->currentLightColour(NORTH) == RED)
+            {
+                switch(my_intersection.trafficLight()->currentLightColour(SOUTH))
+                {
+                    case(GREEN):
+                    {
+                        my_intersection.trafficLight()->changeEvent(SOUTH_ADVANCED_YELLOW);
+                        return true;
+                    }
+                        break;
+                    case(YELLOW):
+                    {
+                        if(my_intersection.trafficLight()->timer() + simulation_params.time_step == intersection_params.ns_advanced_yellow_time)
+                        {
+                            my_intersection.trafficLight()->changeEvent(EW_MUTUAL_RED);
+                            return true;
+                        }
+                        return false;
+                    }
+                        break;
+                    case(RED):
+                    {
+                        SWERRINT(my_intersection.trafficLight()->currentEvent());
+                        return false;
+                    }
+                        break;
+                    default: SWERRINT(my_intersection.trafficLight()->currentLightColour(NORTH));
+                }
+            }
+            else if (my_intersection.trafficLight()->currentLightColour(SOUTH) == RED)
+            {
+                switch(my_intersection.trafficLight()->currentLightColour(NORTH))
+                {
+                    case(GREEN):
+                    {
+                        my_intersection.trafficLight()->changeEvent(NORTH_ADVANCED_YELLOW);
+                        return true;
+                    }
+                        break;
+                    case(YELLOW):
+                    {
+                        if(my_intersection.trafficLight()->timer() + simulation_params.time_step == intersection_params.ns_advanced_yellow_time)
+                        {
+                            my_intersection.trafficLight()->changeEvent(EW_MUTUAL_RED);
+                            return true;
+                        }
+                        return false;
+                    }
+                        break;
+                    case(RED):
+                    {
+                        SWERRINT(my_intersection.trafficLight()->currentEvent());
+                        return false;
+                    }
+                        break;
+                    default: SWERRINT(my_intersection.trafficLight()->currentLightColour(NORTH));
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool Simulation::trafficWeavingPossible()
+{
+    return false;
+    if(my_intersection.trafficLight()->currentLightColour(NORTH) == GREEN &&
+       my_intersection.trafficLight()->currentLightColour(NORTH) == my_intersection.trafficLight()->currentLightColour(SOUTH))
+    {
+        for(uint32 i = 0; i < my_intersection.getRoad(NORTH)->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->vehicleType() == CAR)
+            {
+                uint8 vehicle_state = vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->currentState();
+                if(!(vehicle_state & THROUGH_INTERSECTION) && !(vehicle_state & IN_INTERSECTION))
+                {
+                    return false;
+                }
+            }
+        }
+        for(uint32 i = 0; i < my_intersection.getRoad(SOUTH)->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->vehicleType() == CAR)
+            {
+                uint8 vehicle_state = vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->currentState();
+                if(!(vehicle_state & THROUGH_INTERSECTION) && !(vehicle_state & IN_INTERSECTION))
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    else if(my_intersection.trafficLight()->currentLightColour(EAST) == GREEN &&
+            my_intersection.trafficLight()->currentLightColour(EAST) == my_intersection.trafficLight()->currentLightColour(WEST))
+    {
+        for(uint32 i = 0; i < my_intersection.getRoad(EAST)->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->vehicleType() == CAR)
+            {
+                uint8 vehicle_state = vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->currentState();
+                if(!(vehicle_state & THROUGH_INTERSECTION) && !(vehicle_state & IN_INTERSECTION))
+                {
+                    return false;
+                }
+            }
+        }
+        for(uint32 i = 0; i < my_intersection.getRoad(WEST)->numberOfVehicles(); i++)
+        {
+            if(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->vehicleType() == CAR)
+            {
+                uint8 vehicle_state = vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->currentState();
+                if(!(vehicle_state & THROUGH_INTERSECTION) && !(vehicle_state & IN_INTERSECTION))
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    else
+    {
+        return false;
+    }
+    return true;
+}
+
+bool Simulation::possibleToRunLight(Vehicle *vehicle_)
+{
+    if((vehicle_->currentState() & IN_INTERSECTION) ||
+       (vehicle_->currentState() & THROUGH_INTERSECTION))
+    {
+        SWERRINT(vehicle_->number());
+        return false;
+    }
+
+    bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+    Lane* current_lane = my_intersection.getRoad(vehicle_->vehicleDirection())->getLane(vehicle_->laneNumber());
+    int8 lane_modifier = current_lane->unitVector()[dot];
+    if(current_lane->numberOfVehicles() == 1)
+    {
+        return true;
+    }
+
+    for(uint32 i = 0; i < current_lane->numberOfVehicles(); i++)
+    {
+        if(lane_modifier * (vehicle_list[current_lane->vehicleAtIndex(i)]->currentPosition()[dot] - vehicle_->currentPosition()[dot]) > 0)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+float Simulation::distanceFromCenter(Vehicle *vehicle_)
+{
+    bool dot = findComponent(vehicle_->exteriorPosition(FRONT_BUMPER), vehicle_->exteriorPosition(BACK_BUMPER));
+
+    float distance = intersection_params.center_coordinates[dot] - vehicle_->exteriorPosition(BACK_BUMPER)[dot];
+    if (distance < 0)
+    {
+        distance *= -1;
+    }
+    return distance;
+}
+
+bool Simulation::checkVehicleCommands(std::vector<command*> vehicle_commands_)
+{
+    if(vehicle_commands_.size() == 0 || elapsed_time == 0)
+    {
+        return false;
+    }
+    for(uint32 i = 0; i < vehicle_commands_.size(); i++)
+    {
+        if(vehicle_list[vehicle_commands_.at(i)->vehicle_number]->vehicleType() != SELF_DRIVING_CAR)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Simulation::sendVehicleCommands(std::vector<command*> vehicle_commands_)
+{
+    if(vehicle_commands_.size() == 0 || elapsed_time == 0)
+    {
+        return false;
+    }
+    bool failed = false;
+    uint32 increment_failed_at = 0;
+    for(uint32 i = 0; i < vehicle_commands_.size(); i++)
+    {
+        if(vehicle_list[vehicle_commands_[i]->vehicle_number]->vehicleType() != SELF_DRIVING_CAR)
+        {
+            SWERRINT(vehicle_commands_[i]->vehicle_number);
+            increment_failed_at = i;
+            failed = true;
+            break;
+        }
+        if(!vehicle_list[vehicle_commands_[i]->vehicle_number]->sendCommand(vehicle_commands_[i]))
+        {
+            SWERRINT(vehicle_commands_[i]->command_type);
+            SWERRFLOAT(vehicle_commands_[i]->value);
+            SWERRINT(vehicle_commands_[i]->vehicle_number);
+            increment_failed_at = i;
+            failed = true;
+            break;
+        }
+    }
+
+    if(failed)
+    {
+        for(uint32 i = 0; i < increment_failed_at; i++)
+        {
+            try
+            {
+                if(!vehicle_list[vehicle_commands_[i]->vehicle_number]->removeCommand())
+                {
+                    SWERRINT(vehicle_commands_[i]->command_type);
+                    SWERRFLOAT(vehicle_commands_[i]->value);
+                    SWERRINT(vehicle_commands_[i]->vehicle_number);
+                    throw command_rejected_fail();
+                }
+            }
+            catch(command_rejected_fail &crf)
+            {
+                SWERRSTR(crf.what());
+                printVehicleFailInformation(vehicle_list[vehicle_commands_[i]->vehicle_number]);
+                throw crf;
+            }
+        }
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+    return false;
 }
 
 //Spawn related code
@@ -3676,6 +4525,7 @@ void Simulation::printCollisionInformation(Vehicle* first_vehicle_, Vehicle* sec
 
     collision << "Current Light State: " << LIGHT_EVENT_STATE_STR[my_intersection.trafficLight()->currentEvent()] << " (" << my_intersection.trafficLight()->state() <<")" << std::endl;
     collision << "Time In Light State: " << my_intersection.trafficLight()->timer() << "/" << my_intersection.trafficLight()->currentEventDuration() << std::endl;
+    collision << "Time Since Previous Light State: " << my_intersection.trafficLight()->timeSinceLastChange() << std::endl;
     collision << "Ran Light: " << first_vehicle_->goingThroughLight() << "\t" << second_vehicle_->goingThroughLight() << std::endl << std::endl;
 
     collision << "Number of Active Vehicles: " << active_vehicles.size() << std::endl;
@@ -3745,7 +4595,8 @@ void Simulation::printVehicleFailInformation(Vehicle* vehicle_)
     fail << std::endl << std::endl << std::endl;
 
     fail << "Current Light State: " << LIGHT_EVENT_STATE_STR[my_intersection.trafficLight()->currentEvent()] << " (" << my_intersection.trafficLight()->state() <<")" << std::endl;
-    fail << "Time In Light State: " << my_intersection.trafficLight()->timer() << "/" << my_intersection.trafficLight()->currentEventDuration() << std::endl << std::endl;
+    fail << "Time In Light State: " << my_intersection.trafficLight()->timer() << "/" << my_intersection.trafficLight()->currentEventDuration() << std::endl;
+    fail << "Time Since Previous Light State: " << my_intersection.trafficLight()->timeSinceLastChange() << std::endl << std::endl;
 
     fail << "Number of Active Vehicles: " << active_vehicles.size() << std::endl;
     fail << "Number of Vehicles Made: " << my_vehiclesMade << std::endl << std::endl;

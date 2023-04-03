@@ -42,6 +42,10 @@ public:
     void setCurrentSeparation(float separation_);
     virtual bool forceRunLight();
     virtual bool ignore();
+    virtual bool sendCommand(command* vehicle_command_);
+    virtual bool removeCommand();
+    virtual bool verifyAcceleration(float acceleration_);
+    virtual bool verifyDeceleration(float deceleration_);
 
     //less important functions
     void changeState(state state_, const bool adding_);
@@ -80,6 +84,7 @@ public:
     float fuelConsumed();
     float emissions();
     float* turnRadius();
+    command nextCommand();
 
     void toggleBlinker(path direction_, bool on_);
     void toggleBrakeLights(bool on_);
@@ -137,6 +142,7 @@ protected:
     float my_totalFuelConsumption; //mL
     float my_totalEmissions;
     bool my_ignoreStatus;
+    command my_nextCommand;
     std::ofstream info;
 private:
 };

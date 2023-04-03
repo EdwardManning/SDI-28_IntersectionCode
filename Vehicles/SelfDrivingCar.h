@@ -20,6 +20,10 @@ public:
 
     bool accelerate();
     void accelerate(float acceleration_magnitude_);
+    bool sendCommand(command* vehicle_command_);
+    bool removeCommand();
+    bool verifyAcceleration(float acceleration_);
+    bool verifyDeceleration(float deceleration_);
 
     bool forceRunLight();
     bool ignore();

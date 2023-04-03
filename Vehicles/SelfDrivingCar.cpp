@@ -18,6 +18,10 @@ SelfDrivingCar::SelfDrivingCar(uint32 number_, path path_, Lane* lane_)
     my_currentSeparation = -1;
     my_ignoreStatus = false;
 
+    my_nextCommand.command_type = NULL_COMMAND;
+    my_nextCommand.value = 0;
+    my_nextCommand.vehicle_number = my_number;
+
     my_brakeLights = 0;
     my_blinker[0] = 0;
     my_blinker[1] = 0;
@@ -339,6 +343,58 @@ void SelfDrivingCar::accelerate(float acceleration_magnitude_)
     {
         my_accelerationMagnitude = acceleration_magnitude_;
     }
+}
+
+bool SelfDrivingCar::sendCommand(command* vehicle_command_)
+{
+    if(vehicle_command_->vehicle_number != my_number)
+    {
+        SWERRINT(vehicle_command_->vehicle_number);
+        return false;
+    }
+    my_nextCommand.command_type = vehicle_command_->command_type;
+    my_nextCommand.value = vehicle_command_->value;
+    my_nextCommand.vehicle_number = vehicle_command_->vehicle_number;
+    if((my_nextCommand.command_type == vehicle_command_->command_type) &&
+       (my_nextCommand.value == vehicle_command_->value) &&
+       (my_nextCommand.vehicle_number == vehicle_command_->vehicle_number))
+    {
+        return true;
+    }
+    else
+    {
+        SWERRINT(my_nextCommand.command_type);
+        SWERRFLOAT(my_nextCommand.value);
+        SWERRINT(my_nextCommand.vehicle_number);
+        return false;
+    }
+}
+
+bool SelfDrivingCar::removeCommand()
+{
+    my_nextCommand.command_type = NULL_COMMAND;
+    my_nextCommand.value = 0; //doesn't really matter
+    my_nextCommand.vehicle_number = my_number; //doesn't really matter
+
+    if(my_nextCommand.command_type != NULL_COMMAND)
+    {
+        SWERRINT(my_nextCommand.command_type);
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+bool SelfDrivingCar::verifyAcceleration(float acceleration_)
+{
+    return acceleration_ <= my_driver->comfortableAcceleration();
+}
+
+bool SelfDrivingCar::verifyDeceleration(float deceleration_)
+{
+    return deceleration_ <= my_driver->comfortableDeceleration();
 }
 
 bool SelfDrivingCar::forceRunLight()

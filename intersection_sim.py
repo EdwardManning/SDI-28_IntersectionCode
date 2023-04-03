@@ -250,8 +250,8 @@ def scripting():
     total_runs = 0
     spawn_density_range = 101 #starts at 1 ends at value
     self_driving_vehicle_probability_range = 100 #starts at 0 ends at value-1
-    spawn_density_increment = 5
-    self_driving_vehicle_probability_increment = 5
+    spawn_density_increment = 20
+    self_driving_vehicle_probability_increment = 20
 
     if(not os.path.exists(images_output_path)):
         os.mkdir(images_output_path)

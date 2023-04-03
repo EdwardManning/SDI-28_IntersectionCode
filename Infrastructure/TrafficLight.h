@@ -18,11 +18,14 @@ public:
     lightEventState currentEvent();
     lightEventState nextEvent();
     float timer();
+    float timeSinceLastChange();
     float currentEventDuration();
+    bool type();
 private:
     void cycle();
     bool my_type;
     float my_timer;
+    float my_timeSinceLastChange;
     lightEventState my_currentEventState;
     lightEventState my_nextEventState;
     LightEvent* my_currentEvent;

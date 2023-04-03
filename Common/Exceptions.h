@@ -24,3 +24,11 @@ struct impossible_state_fail : public std::exception
         return "Impossible State Fail";
     }
 };
+
+struct command_rejected_fail : public std::exception
+{
+    const char* what() const throw()
+    {
+        return "command_rejected_fail";
+    }
+};

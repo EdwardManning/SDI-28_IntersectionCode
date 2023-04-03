@@ -61,6 +61,7 @@ void Vehicle::drive()
         my_accelerationMagnitude = 0;
         my_stopTime += simulation_params.time_step;
     }
+    removeCommand();
     consumeFuel();
     draw();
     if(my_totalTime > 200)
@@ -1124,6 +1125,26 @@ bool Vehicle::ignore()
     return false;
 }
 
+bool Vehicle::sendCommand(command* vehicle_command_)
+{
+    return false;
+}
+
+bool Vehicle::removeCommand()
+{
+    return false;
+}
+
+bool Vehicle::verifyAcceleration(float acceleration_)
+{
+    return false;
+}
+
+bool Vehicle::verifyDeceleration(float deceleration_)
+{
+    return false;
+}
+
 void Vehicle::toggleBlinker(path direction_, bool on_)
 {
     if(direction_ == LEFT)
@@ -1411,4 +1432,9 @@ float Vehicle::emissions()
 float* Vehicle::turnRadius()
 {
     return my_turnRadius;
+}
+
+command Vehicle::nextCommand()
+{
+    return my_nextCommand;
 }

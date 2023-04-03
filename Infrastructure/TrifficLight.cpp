@@ -14,6 +14,7 @@ TrafficLight::TrafficLight(bool smart_)
 bool TrafficLight::makeStep()
 {
     my_timer = my_timer + simulation_params.time_step;
+    my_timeSinceLastChange += simulation_params.time_step;
     if (my_timer > my_currentEvent->duration())
     {
         cycle();
@@ -243,6 +244,7 @@ lightColour TrafficLight::advancedLightColour(direction direction_)
 
 void TrafficLight::cycle()
 {
+    my_timeSinceLastChange = 0;
     //this will eventually be used with the traffic light to 
     //set arbitrary durations for changeEvent (not just the basic one)
     //this will allow for early light changes depending on traffic
@@ -416,6 +418,10 @@ void TrafficLight::changeEvent(lightEventState event_)
     my_currentState = my_currentEvent->lightState();
     my_nextEventState = my_currentEvent->nextEvent();
     my_timer = 0;
+    // if(my_currentState != my_previousState)
+    // {
+    //     my_timeSinceLastChange = 0;
+    // }
 }
 
 void TrafficLight::changeEvent(lightEventState event_, float duration_)
@@ -564,6 +570,10 @@ void TrafficLight::changeEvent(lightEventState event_, float duration_)
     my_currentState = my_currentEvent->lightState();
     my_nextEventState = my_currentEvent->nextEvent();
     my_timer = 0;
+    // if(my_currentState != my_previousState)
+    // {
+    //     my_timeSinceLastChange = 0;
+    // }
 }
 
 uint16 TrafficLight::state()
@@ -586,9 +596,19 @@ float TrafficLight::timer()
     return my_timer;
 }
 
+float TrafficLight::timeSinceLastChange()
+{
+    return my_timeSinceLastChange;
+}
+
 float TrafficLight::currentEventDuration()
 {
     return my_currentEvent->duration();
+}
+
+bool TrafficLight::type()
+{
+    return my_type;;
 }
 
 uint16 TrafficLight::previousState()
