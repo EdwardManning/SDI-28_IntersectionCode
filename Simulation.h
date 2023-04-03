@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 #include "Common/CommonDefs.h"
 #include "Infrastructure/Intersection.h"
@@ -109,7 +110,16 @@ private:
     void sdv_startAcceleration(Vehicle* vehicle_);
     void sdv_startAcceleration(Vehicle* vehicle_, float acceleration_magnitude_);
     void sdv_startDeceleration(Vehicle* vehicle_, float deceleration_magnitude_);
-    
+
+    //Light Control System
+    void lightControlSystem();
+    std::vector<command*> createVehicleCommands();
+    bool trafficLightCommands(uint32* directional_cars_);
+    bool trafficWeavingPossible();
+    bool possibleToRunLight(Vehicle* vehicle_);
+    float distanceFromCenter(Vehicle* vehicle_);
+    bool checkVehicleCommands(std::vector<command*> vehicle_commands_);
+    bool sendVehicleCommands(std::vector<command*> vehicle_commands_);
 
     //active vehicles functions
     Vehicle* vehicleAtIndex(uint32 index_);

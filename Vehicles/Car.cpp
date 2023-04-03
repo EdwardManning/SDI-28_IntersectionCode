@@ -31,6 +31,10 @@ Car::Car(uint32 number_, path path_, Lane* lane_, DriverType driver_type_)
     my_accelerationMagnitude = 0;
     my_currentSeparation = -1;
 
+    my_nextCommand.command_type = NULL_COMMAND;
+    my_nextCommand.value = 0;
+    my_nextCommand.vehicle_number = my_number;
+
     my_brakeLights = 0;
     my_blinker[0] = 0;
     my_blinker[1] = 0;

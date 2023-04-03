@@ -407,6 +407,29 @@ static Grade fuelConsumptionGrade(float fuel_consumption_)
     }
 }
 
+enum commands
+{
+    NULL_COMMAND,   //0
+    ACCELERATE,     //1
+    DECELERATE,     //2
+    SET_MAX_SPEED,  //3
+};
+
+const std::string COMMANDS_STR[]
+{
+    "NULL",
+    "accelerate",
+    "decelerate",
+    "set max speed",
+};
+
+struct command
+{
+    uint32 vehicle_number;
+    commands command_type;
+    float value;
+};
+
 //functions used for turn modifiers
 //used with the modifier type
 static float positive_cos(float period)
@@ -470,6 +493,11 @@ static float neededAcceleration(float current_velocity_, float distance_)
 static float neededAcceleration(float target_velocity_, float current_velocity_, float distance_)
 {
     return ((target_velocity_ * target_velocity_) - (current_velocity_ * current_velocity_)) / (2 * distance_);
+}
+
+static float timedAcceleration(float distance_, float current_velocity_, float time_)
+{
+    return (2 * (distance_ - (current_velocity_ * time_))) / (time_ * time_);
 }
 
 static float neededDistance(float current_velocity_, float acceleration_)
