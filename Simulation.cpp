@@ -43,12 +43,12 @@ Simulation::Simulation()
         hd_straight_averages[i] = 0;
         hd_right_averages[i] = 0;
     }
+    elapsed_time = 0;
     vehicle_list = new Vehicle*[simulation_params.number_of_vehicles];
     generateVehicle(my_vehiclesMade);
     my_vehiclesMade++;
     my_spawnTimer = 0;
     light_change_occured = false;
-    elapsed_time = 0;
     run();
 }
 
@@ -2796,7 +2796,17 @@ std::vector<command*> Simulation::createVehicleCommands()
     bool ew_going = (my_intersection.trafficLight()->currentLightColour(EAST) == my_intersection.trafficLight()->currentLightColour(WEST) &&
                      my_intersection.trafficLight()->currentLightColour(EAST) != RED);
 
-    if(trafficWeavingPossible())
+    bool weaving_enabled = false;
+    if((ns_going && ((number_of_directional_cars[NORTH] != 0) || (number_of_directional_cars[SOUTH] != 0))))
+    {
+        weaving_enabled = trafficWeavingPossible();
+    }
+    else if((ew_going && ((number_of_directional_cars[EAST] != 0) || (number_of_directional_cars[WEST] != 0))))
+    {
+        weaving_enabled = trafficWeavingPossible();
+    }
+
+    if(weaving_enabled)
     {
         if(ns_going && ew_going)
         {
@@ -3353,29 +3363,48 @@ bool Simulation::trafficLightCommands(uint32 *directional_cars_)
 
 bool Simulation::trafficWeavingPossible()
 {
-    return false;
     if(my_intersection.trafficLight()->currentLightColour(NORTH) == GREEN &&
        my_intersection.trafficLight()->currentLightColour(NORTH) == my_intersection.trafficLight()->currentLightColour(SOUTH))
     {
-        for(uint32 i = 0; i < my_intersection.getRoad(NORTH)->numberOfVehicles(); i++)
-        {
-            if(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->vehicleType() == CAR)
+        if(my_intersection.getRoad(NORTH)->numberOfVehicles() > 0)
+        {   
+            for(uint32 i = 0; i < my_intersection.getRoad(NORTH)->numberOfVehicles(); i++)
             {
-                uint8 vehicle_state = vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->currentState();
-                if(!(vehicle_state & THROUGH_INTERSECTION) && !(vehicle_state & IN_INTERSECTION))
+                if(vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->vehicleType() == CAR)
                 {
-                    return false;
+                    uint8 vehicle_state = vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->currentState();
+                    if(!(vehicle_state & THROUGH_INTERSECTION) || !(vehicle_state & IN_INTERSECTION))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if(!vehicle_list[my_intersection.getRoad(NORTH)->vehicleAtIndex(i)]->ignore())
+                    {
+                        return false;
+                    }
                 }
             }
         }
-        for(uint32 i = 0; i < my_intersection.getRoad(SOUTH)->numberOfVehicles(); i++)
-        {
-            if(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->vehicleType() == CAR)
+        if(my_intersection.getRoad(SOUTH)->numberOfVehicles() > 0)
+        {   
+            for(uint32 i = 0; i < my_intersection.getRoad(SOUTH)->numberOfVehicles(); i++)
             {
-                uint8 vehicle_state = vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->currentState();
-                if(!(vehicle_state & THROUGH_INTERSECTION) && !(vehicle_state & IN_INTERSECTION))
+                if(vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->vehicleType() == CAR)
                 {
-                    return false;
+                    uint8 vehicle_state = vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->currentState();
+                    if(!(vehicle_state & THROUGH_INTERSECTION) || !(vehicle_state & IN_INTERSECTION))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if(!vehicle_list[my_intersection.getRoad(SOUTH)->vehicleAtIndex(i)]->ignore())
+                    {
+                        return false;
+                    }
                 }
             }
         }
@@ -3383,25 +3412,45 @@ bool Simulation::trafficWeavingPossible()
     else if(my_intersection.trafficLight()->currentLightColour(EAST) == GREEN &&
             my_intersection.trafficLight()->currentLightColour(EAST) == my_intersection.trafficLight()->currentLightColour(WEST))
     {
-        for(uint32 i = 0; i < my_intersection.getRoad(EAST)->numberOfVehicles(); i++)
-        {
-            if(vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->vehicleType() == CAR)
+        if(my_intersection.getRoad(EAST)->numberOfVehicles() > 0)
+        {   
+            for(uint32 i = 0; i < my_intersection.getRoad(EAST)->numberOfVehicles(); i++)
             {
-                uint8 vehicle_state = vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->currentState();
-                if(!(vehicle_state & THROUGH_INTERSECTION) && !(vehicle_state & IN_INTERSECTION))
+                if(vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->vehicleType() == CAR)
                 {
-                    return false;
+                    uint8 vehicle_state = vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->currentState();
+                    if(!(vehicle_state & THROUGH_INTERSECTION) || !(vehicle_state & IN_INTERSECTION))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if(!vehicle_list[my_intersection.getRoad(EAST)->vehicleAtIndex(i)]->ignore())
+                    {
+                        return false;
+                    }
                 }
             }
         }
-        for(uint32 i = 0; i < my_intersection.getRoad(WEST)->numberOfVehicles(); i++)
-        {
-            if(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->vehicleType() == CAR)
+        if(my_intersection.getRoad(WEST)->numberOfVehicles() > 0)
+        {   
+            for(uint32 i = 0; i < my_intersection.getRoad(WEST)->numberOfVehicles(); i++)
             {
-                uint8 vehicle_state = vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->currentState();
-                if(!(vehicle_state & THROUGH_INTERSECTION) && !(vehicle_state & IN_INTERSECTION))
+                if(vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->vehicleType() == CAR)
                 {
-                    return false;
+                    uint8 vehicle_state = vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->currentState();
+                    if(!(vehicle_state & THROUGH_INTERSECTION) || !(vehicle_state & IN_INTERSECTION))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if(!vehicle_list[my_intersection.getRoad(WEST)->vehicleAtIndex(i)]->ignore())
+                    {
+                        return false;
+                    }
                 }
             }
         }
@@ -3544,7 +3593,7 @@ void Simulation::generateVehicle(uint32 number_)
     std::mt19937 random_vehicle_type(root());
 
     std::uniform_int_distribution<> path_distribution(1, 3);
-    std::uniform_int_distribution<> direction_distribution(0, 100);
+    std::uniform_real_distribution<> direction_distribution(0, 100);
     std::uniform_int_distribution<> driver_type_distribution(1, 3);
     std::uniform_int_distribution<> vehicle_type_distribution(0, 100);
 
@@ -3560,10 +3609,10 @@ void Simulation::generateVehicle(uint32 number_)
         default: SWERRINT(switch_placeholder);
     }
 
-    uint8 north_range = simulation_params.north_spawn_probability;
-    uint8 south_range = north_range + simulation_params.south_spawn_probability;
-    uint8 east_range = south_range + simulation_params.east_spawn_probability;
-    uint8 west_range = east_range + simulation_params.west_spawn_probability;
+    float north_range = simulation_params.north_spawn_probability(elapsed_time);
+    float south_range = north_range + simulation_params.south_spawn_probability(elapsed_time);
+    float east_range = south_range + simulation_params.east_spawn_probability(elapsed_time);
+    float west_range = east_range + simulation_params.west_spawn_probability(elapsed_time);
     switch_placeholder = direction_distribution(random_direction);
     if(switch_placeholder < north_range)
     {
@@ -3697,6 +3746,7 @@ Vehicle* Simulation::vehicleAtIndex(uint32 index_)
     {
         //hard SWERR
         SWERRINT(index_);
+        SWERRSTR(Out_of_Range.what());
         throw;
     }
 }

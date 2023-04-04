@@ -9,3 +9,4 @@ typedef signed char int8;
 
 typedef float (*modifier)(float period);
 
+typedef float (*probability)(float);

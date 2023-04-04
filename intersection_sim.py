@@ -829,13 +829,13 @@ def advancedScripting():
     start_time = time.time()
     number_of_collisions = 0
     number_of_fails = 0
-    number_of_runs = 10
+    number_of_runs = 100
     run_number = 0
     total_runs = 0
     spawn_density_range = 101 #starts at 1 ends at value
     self_driving_vehicle_probability_range = 100 #starts at 0 ends at value-1
-    spawn_density_increment = 20
-    self_driving_vehicle_probability_increment = 25
+    spawn_density_increment = 10
+    self_driving_vehicle_probability_increment = 10
 
     if(not os.path.exists(images_output_path)):
         os.mkdir(images_output_path)
