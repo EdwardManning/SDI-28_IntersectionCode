@@ -30,6 +30,7 @@ uint32 Lane::vehicleAtIndex(uint32 index_)
     {
         //hard SWERR
         SWERRINT(index_);
+        SWERRSTR(Out_of_Range.what());
         throw;
     }
 }

@@ -1,4 +1,5 @@
 #include "./SimulationParameters.h"
+#include "SimulationParameters.h"
 
 //Function definitions for SimulationParameters.h
 
@@ -68,4 +69,44 @@ SimulationParameters::SimulationParameters()
     {
         input.close();
     }
+}
+
+float ns_squeeze_ns(float time)
+{
+    return 25 + 20 * (std::sin((PI/200)*time) * std::sin((PI/200)*time));
+}
+
+float ns_squeeze_ew(float time)
+{
+    return 5 + 20 * (std::cos((PI/200)*time) * std::cos((PI/200)*time));
+}
+
+float ew_squeeze_ns(float time)
+{
+    return 5 + 20 * (std::cos((PI/200)*time) * std::cos((PI/200)*time));
+}
+
+float ew_squeeze_ew(float time)
+{
+    return 25 + 20 * (std::sin((PI/200)*time) * std::sin((PI/200)*time));
+}
+
+float north_constant(float time)
+{
+    return 25;
+}
+
+float south_constant(float time)
+{
+    return 25;
+}
+
+float east_constant(float time)
+{
+    return 25;
+}
+
+float west_constant(float time)
+{
+    return 25;
 }
