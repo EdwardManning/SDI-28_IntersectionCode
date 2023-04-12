@@ -4,6 +4,7 @@ import shutil
 
 STANDARD_SIMULATION_PARAMS = [1, 25, 1]
 
+output_file = Path('./CodeFile.txt')
 collision_text_path = Path('./Output/CollisionInformation.txt')
 all_collisions_text_path = Path('./Output/AllCollisions.txt')
 fail_report_text_path = Path('./Output/FailureReport.txt')
@@ -25,6 +26,8 @@ DEFAULT_SWERR_STR = "SWERR Occurances:"
 
 
 def cleanRepo():
+    if(output_file.is_file()):
+        os.remove(output_file)
     if(collision_text_path.is_file()):
         os.remove(collision_text_path)
     if(all_collisions_text_path.is_file()):
