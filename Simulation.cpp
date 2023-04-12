@@ -83,7 +83,7 @@ Simulation::~Simulation()
 void Simulation::run()
 {
     //debugIntersection();
-    while(!completionCheck() && (elapsed_time < 2000))
+    while(!completionCheck())
     {   
         if(my_intersection.trafficLight()->type())
         {
@@ -135,10 +135,6 @@ void Simulation::run()
             }
         }
 
-    }
-    if(elapsed_time >= 2000)
-    {
-        std::cout << my_vehiclesMade << std::endl;
     }
     std::cout << elapsed_time << std::endl;
 }

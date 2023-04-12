@@ -16,22 +16,3 @@ int main()
 
     return 0;
 }
-
-/*
-*   Name:
-*
-*   Description:
-*
-*   Input:
-*
-*   Output:
-*
-*/
-
-/*
-*   Name:
-*
-*   Description:
-*
-*   Type:
-*/
